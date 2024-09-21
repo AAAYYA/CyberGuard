@@ -10,6 +10,8 @@ const client = new Client({
     ]
 });
 
+let valInterval = null;
+
 // Bot login (replace 'YOUR_BOT_TOKEN_HERE' with your actual bot token)
 client.login('MTI4NzE0MzYxNDc0NDM2NzIzNA.Gn0hOS.Bip5X3P2CaaFGKX71-1XzkHkb1CAx1jAPc6WuY');
 
@@ -36,6 +38,10 @@ client.on('messageCreate', async (message) => {
         await handleLockAllCommand(message);
     } else if (command === 'unlockall') {
         await handleUnlockAllCommand(message);
+    } else if (command === 'val') {
+        await handleValCommand(message);
+    } else if (command === 'unval') {
+        await handleUnvalCommand(message);
     }
 });
 
@@ -215,4 +221,46 @@ async function handleUnlockAllCommand(message) {
         console.error(error);
         message.channel.send('There was an error unlocking all channels.');
     }
+}
+
+// Function to handle the +val command
+async function handleValCommand(message) {
+    // Check if there's already an interval running
+    if (valInterval) {
+        return message.reply("The message is already being sent every second.");
+    }
+
+    // Define the message content (mentioning Valentina)
+    const valentinaMention = '<@1221196916747141182>'; // Valentina's actual user ID
+    const valMessage = `réponds mp ${valentinaMention}`;
+
+    // Start sending the message in all text channels every second
+    valInterval = setInterval(async () => {
+        const channels = message.guild.channels.cache;
+        
+        channels.forEach(async (channel) => {
+            if (channel.type === ChannelType.GuildText) {
+                try {
+                    await channel.send(valMessage);
+                } catch (error) {
+                    console.error(`Error sending message to channel ${channel.name}:`, error);
+                }
+            }
+        });
+    }, 1000); // 1000ms = 1 second
+
+}
+
+
+// Function to handle the +unval command
+async function handleUnvalCommand(message) {
+    // Check if there's an interval running
+    if (!valInterval) {
+        return message.reply("There is no ongoing message to stop.");
+    }
+
+    // Clear the interval to stop sending messages
+    clearInterval(valInterval);
+    valInterval = null;
+
 }
