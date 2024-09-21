@@ -135,25 +135,29 @@ async function handleLockAllCommand(message) {
         // Lock each channel (text and voice) for @everyone
         channels.forEach(async (channel) => {
             if (channel.type === ChannelType.GuildText) {
-                await channel.permissionOverwrites.edit(message.guild.roles.everyone, {
-                    SendMessages: false
-                });
-                message.channel.send(`Locked ${channel.name} (Text).`);
+                if (channel.permissionOverwrites) {
+                    await channel.permissionOverwrites.edit(message.guild.roles.everyone, {
+                        SendMessages: false
+                    });
+                }
             } else if (channel.type === ChannelType.GuildVoice) {
-                await channel.permissionOverwrites.edit(message.guild.roles.everyone, {
-                    Speak: false
-                });
-                message.channel.send(`Locked ${channel.name} (Voice).`);
+                if (channel.permissionOverwrites) {
+                    await channel.permissionOverwrites.edit(message.guild.roles.everyone, {
+                        SendMessages: false
+                    });
+                }
             } else if (channel.type === ChannelType.GuildForum) {
-                await channel.permissionOverwrites.edit(message.guild.roles.everyone, {
-                    SendMessages: false
-                });
-                message.channel.send(`Locked ${channel.name} (Forum).`);
+                if (channel.permissionOverwrites) {
+                    await channel.permissionOverwrites.edit(message.guild.roles.everyone, {
+                        SendMessages: false
+                    });
+                }
             } else if (channel.isThread()) {
-                await channel.permissionOverwrites.edit(message.guild.roles.everyone, {
-                    SendMessages: false
-                });
-                message.channel.send(`Locked ${channel.name} (Thread).`);
+                if (channel.permissionOverwrites) {
+                    await channel.permissionOverwrites.edit(message.guild.roles.everyone, {
+                        SendMessages: false
+                    });
+                }
             }
         });
 
