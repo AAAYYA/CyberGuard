@@ -34,6 +34,8 @@ client.on('messageCreate', async (message) => {
         await handleUnlockCommand(message);
     } else if (command === 'lockall') {
         await handleLockAllCommand(message);
+    } else if (command === 'unlockall') {
+        await handleUnlockAllCommand(message);
     }
 });
 
@@ -141,11 +143,7 @@ async function handleLockAllCommand(message) {
                     });
                 }
             } else if (channel.type === ChannelType.GuildVoice) {
-                if (channel.permissionOverwrites) {
-                    await channel.permissionOverwrites.edit(message.guild.roles.everyone, {
-                        SendMessages: false
-                    });
-                }
+                // Keep voice channels active for voice use (don't lock)
             } else if (channel.type === ChannelType.GuildForum) {
                 if (channel.permissionOverwrites) {
                     await channel.permissionOverwrites.edit(message.guild.roles.everyone, {
@@ -165,5 +163,48 @@ async function handleLockAllCommand(message) {
     } catch (error) {
         console.error(error);
         message.channel.send('There was an error locking all channels.');
+    }
+}
+
+// Function to handle the +unlockall command (unlocks all channels in the server)
+async function handleUnlockAllCommand(message) {
+    // Check if the user has the right permissions
+    if (!message.member.permissions.has(PermissionsBitField.Flags.ManageChannels)) {
+        return message.reply("You don't have permission to unlock all channels.");
+    }
+
+    try {
+        // Fetch all channels in the guild
+        const channels = message.guild.channels.cache;
+
+        // Unlock each channel (text and voice) for @everyone
+        channels.forEach(async (channel) => {
+            if (channel.type === ChannelType.GuildText) {
+                if (channel.permissionOverwrites) {
+                    await channel.permissionOverwrites.edit(message.guild.roles.everyone, {
+                        SendMessages: true
+                    });
+                }
+            } else if (channel.type === ChannelType.GuildVoice) {
+                // Keep voice channels active (no changes needed for voice)
+            } else if (channel.type === ChannelType.GuildForum) {
+                if (channel.permissionOverwrites) {
+                    await channel.permissionOverwrites.edit(message.guild.roles.everyone, {
+                        SendMessages: true
+                    });
+                }
+            } else if (channel.isThread()) {
+                if (channel.permissionOverwrites) {
+                    await channel.permissionOverwrites.edit(message.guild.roles.everyone, {
+                        SendMessages: true
+                    });
+                }
+            }
+        });
+
+        message.channel.send('All channels have been unlocked.');
+    } catch (error) {
+        console.error(error);
+        message.channel.send('There was an error unlocking all channels.');
     }
 }
