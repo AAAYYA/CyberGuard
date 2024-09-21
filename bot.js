@@ -20,7 +20,6 @@ client.once('ready', () => {
     console.log(`Logged in as ${client.user.tag}!`);
 });
 
-// Command handler
 client.on('messageCreate', async (message) => {
     // Ignore messages from bots or messages without the prefix
     if (message.author.bot || !message.content.startsWith('+')) return;
@@ -44,6 +43,8 @@ client.on('messageCreate', async (message) => {
         await handleUnvalCommand(message);
     } else if (command === 'clear') {
         await handleClearCommand(message);
+    } else if (command === 'temp') {
+        await handleTempCommand(message, args);
     }
 });
 
@@ -284,4 +285,49 @@ async function handleUnvalCommand(message) {
     clearInterval(valInterval);
     valInterval = null;
 
+}
+
+async function handleTempCommand(message, args) {
+    // Check if the user has the right permissions
+    if (!message.member.permissions.has(PermissionsBitField.Flags.ManageMessages)) {
+        return message.reply("You don't have permission to use this command.");
+    }
+
+    // Ensure the command has the correct arguments
+    const userMention = message.mentions.members.first();
+    const duration = parseInt(args[1]);
+
+    if (!userMention || isNaN(duration)) {
+        return message.reply("Please mention a valid user and time in seconds (e.g. +temp @user 60).");
+    }
+
+    // Restrict the user from sending messages
+    try {
+        const channels = message.guild.channels.cache;
+
+        channels.forEach(async (channel) => {
+            if (channel.type === ChannelType.GuildText && channel.permissionOverwrites) {
+                await channel.permissionOverwrites.edit(userMention, {
+                    SendMessages: false
+                });
+            }
+        });
+
+        message.channel.send(`${userMention.user.tag} has been restricted from sending messages for ${duration} seconds.`);
+
+        // Set a timeout to restore permissions after the duration ends
+        setTimeout(async () => {
+            channels.forEach(async (channel) => {
+                if (channel.type === ChannelType.GuildText && channel.permissionOverwrites) {
+                    await channel.permissionOverwrites.edit(userMention, {
+                        SendMessages: true
+                    });
+                }
+            });
+            message.channel.send(`${userMention.user.tag}'s restriction has been lifted.`);
+        }, duration * 1000); // Convert to milliseconds
+    } catch (error) {
+        console.error(error);
+        message.channel.send('There was an error applying the temporary restriction.');
+    }
 }
