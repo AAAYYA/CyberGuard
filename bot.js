@@ -1,5 +1,5 @@
 global.ReadableStream = global.ReadableStream || require('stream/web').ReadableStream;
-const { Client, GatewayIntentBits, PermissionsBitField } = require('discord.js');
+const { Client, GatewayIntentBits, PermissionsBitField, ChannelType } = require('discord.js');
 const client = new Client({ 
     intents: [
         GatewayIntentBits.Guilds, 
@@ -134,16 +134,26 @@ async function handleLockAllCommand(message) {
 
         // Lock each channel (text and voice) for @everyone
         channels.forEach(async (channel) => {
-            if (channel.isText()) {
+            if (channel.type === ChannelType.GuildText) {
                 await channel.permissionOverwrites.edit(message.guild.roles.everyone, {
                     SendMessages: false
                 });
                 message.channel.send(`Locked ${channel.name} (Text).`);
-            } else if (channel.isVoice()) {
+            } else if (channel.type === ChannelType.GuildVoice) {
                 await channel.permissionOverwrites.edit(message.guild.roles.everyone, {
                     Speak: false
                 });
                 message.channel.send(`Locked ${channel.name} (Voice).`);
+            } else if (channel.type === ChannelType.GuildForum) {
+                await channel.permissionOverwrites.edit(message.guild.roles.everyone, {
+                    SendMessages: false
+                });
+                message.channel.send(`Locked ${channel.name} (Forum).`);
+            } else if (channel.isThread()) {
+                await channel.permissionOverwrites.edit(message.guild.roles.everyone, {
+                    SendMessages: false
+                });
+                message.channel.send(`Locked ${channel.name} (Thread).`);
             }
         });
 
