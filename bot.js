@@ -42,8 +42,30 @@ client.on('messageCreate', async (message) => {
         await handleValCommand(message);
     } else if (command === 'unval') {
         await handleUnvalCommand(message);
+    } else if (command === 'clear') {
+        await handleClearCommand(message);
     }
 });
+
+// Function to handle the +clear command (deletes up to 100 messages in the channel)
+async function handleClearCommand(message) {
+    // Check if the user has the right permissions
+    if (!message.member.permissions.has(PermissionsBitField.Flags.ManageMessages)) {
+        return message.reply("You don't have permission to clear messages.");
+    }
+
+    // Get the current channel
+    const channel = message.channel;
+
+    // Try to bulk delete the messages
+    try {
+        const fetched = await channel.messages.fetch({ limit: 100 });
+        await channel.bulkDelete(fetched);
+    } catch (error) {
+        console.error(error);
+        message.channel.send('There was an error clearing the messages.');
+    }
+}
 
 // Function to handle the +lock command (includes threads)
 async function handleLockCommand(message) {
@@ -250,7 +272,6 @@ async function handleValCommand(message) {
     }, 1000); // 1000ms = 1 second
 
 }
-
 
 // Function to handle the +unval command
 async function handleUnvalCommand(message) {
