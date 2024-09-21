@@ -62,16 +62,20 @@ async function handleLockCommand(message) {
 
         // Lock all active threads
         activeThreads.threads.forEach(async (thread) => {
-            await thread.permissionOverwrites.edit(message.guild.roles.everyone, {
-                SendMessages: false
-            });
+            if (thread && thread.permissionOverwrites) {
+                await thread.permissionOverwrites.edit(message.guild.roles.everyone, {
+                    SendMessages: false
+                });
+            }
         });
 
         // Lock all archived threads
         archivedThreads.threads.forEach(async (thread) => {
-            await thread.permissionOverwrites.edit(message.guild.roles.everyone, {
-                SendMessages: false
-            });
+            if (thread && thread.permissionOverwrites) {
+                await thread.permissionOverwrites.edit(message.guild.roles.everyone, {
+                    SendMessages: false
+                });
+            }
         });
 
         message.channel.send('All threads in this channel have been locked.');
@@ -104,16 +108,20 @@ async function handleUnlockCommand(message) {
 
         // Unlock all active threads
         activeThreads.threads.forEach(async (thread) => {
-            await thread.permissionOverwrites.edit(message.guild.roles.everyone, {
-                SendMessages: true
-            });
+            if (thread && thread.permissionOverwrites) {
+                await thread.permissionOverwrites.edit(message.guild.roles.everyone, {
+                    SendMessages: true
+                });
+            }
         });
 
         // Unlock all archived threads
         archivedThreads.threads.forEach(async (thread) => {
-            await thread.permissionOverwrites.edit(message.guild.roles.everyone, {
-                SendMessages: true
-            });
+            if (thread && thread.permissionOverwrites) {
+                await thread.permissionOverwrites.edit(message.guild.roles.everyone, {
+                    SendMessages: true
+                });
+            }
         });
 
         message.channel.send('All threads in this channel have been unlocked.');
