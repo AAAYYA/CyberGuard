@@ -28,8 +28,31 @@ async function handleCommand(command, message, args) {
         case 'temp':
             await handleTempCommand(message, args);
             break;
+        case 'ban':
+            await handleBanCommand(message, args);
+            break;
         default:
             message.channel.send("Unknown command.");
+    }
+}
+
+async function handleBanCommand(message, args) {
+    if (!message.member.permissions.has(PermissionsBitField.Flags.BanMembers)) {
+        return message.reply("You don't have permission to ban users.");
+    }
+
+    const userMention = message.mentions.members.first();
+    const reason = args.slice(1).join(' ');
+
+    if (!userMention) {
+        return message.reply("Please mention a valid user to ban.");
+    }
+
+    try {
+        await userMention.ban({ reason });
+    } catch (error) {
+        console.error(error);
+        message.channel.send('Error banning the user.');
     }
 }
 
@@ -73,7 +96,6 @@ async function handleLockCommand(message) {
             }
         });
 
-        message.channel.send('All threads in this channel have been locked.');
     } catch (error) {
         console.error(error);
         message.channel.send('Error locking the channel and its threads.');
@@ -106,7 +128,6 @@ async function handleUnlockCommand(message) {
             }
         });
 
-        message.channel.send('All threads in this channel have been unlocked.');
     } catch (error) {
         console.error(error);
         message.channel.send('Error unlocking the channel and its threads.');
