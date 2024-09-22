@@ -12,7 +12,7 @@ const client = new Client({
     ]
 });
 
-client.login('YOUR_BOT_TOKEN_HERE');
+client.login('MTI4NzE0MzYxNDc0NDM2NzIzNA.Gn0hOS.Bip5X3P2CaaFGKX71-1XzkHkb1CAx1jAPc6WuY');
 
 client.once('ready', () => {
     console.log(`Logged in as ${client.user.tag}!`);
