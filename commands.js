@@ -31,8 +31,30 @@ async function handleCommand(command, message, args) {
         case 'ban':
             await handleBanCommand(message, args);
             break;
+        case 'kick':
+            await handleKickCommand(message, args);
+            break;
         default:
             message.channel.send("Unknown command.");
+    }
+}
+
+async function handleKickCommand(message, args) {
+    if (!message.member.permissions.has(PermissionsBitField.Flags.KickMembers)) {
+        return message.reply("You don't have permission to kick users.");
+    }
+
+    const userMention = message.mentions.members.first();
+    const reason = args.slice(1).join(' ');
+
+    if (!userMention) {
+        return message.reply("Please mention a valid user to kick.");
+    }
+    try {
+        await userMention.kick(reason);
+    } catch (error) {
+        console.error(error);
+        message.channel.send('Error kicking the user.');
     }
 }
 
