@@ -40,9 +40,22 @@ async function handleCommand(command, message, args) {
         case 'warn':
             await handleWarnCommand(message, args);
             break;
+        case 'snipe':
+            await handleSnipeCommand(message);
+            break;
         default:
             message.channel.send("Unknown command.");
     }
+}
+
+async function handleSnipeCommand(message) {
+    const snipeMessage = message.channel.lastMessage;
+    if (!snipeMessage) {
+        return message.channel.send("No message to snipe.");
+    }
+
+    const { author, content } = snipeMessage;
+    message.channel.send(`Sniped message from ${author}: ${content}`);
 }
 
 async function handleWarnCommand(message, args) {
