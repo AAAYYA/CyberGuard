@@ -34,8 +34,30 @@ async function handleCommand(command, message, args) {
         case 'kick':
             await handleKickCommand(message, args);
             break;
+        case 'unban':
+            await handleUnbanCommand(message, args);
+            break;
         default:
             message.channel.send("Unknown command.");
+    }
+}
+
+async function handleUnbanCommand(message, args) {
+    if (!message.member.permissions.has(PermissionsBitField.Flags.BanMembers)) {
+        return message.reply("You don't have permission to unban users.");
+    }
+
+    const userMention = args[0];
+
+    if (!userMention) {
+        return message.reply("Please provide a valid user ID to unban.");
+    }
+
+    try {
+        await message.guild.members.unban(userMention);
+    } catch (error) {
+        console.error(error);
+        message.channel.send('Error unbanning the user.');
     }
 }
 
