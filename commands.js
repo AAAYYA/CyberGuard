@@ -37,10 +37,35 @@ async function handleCommand(command, message, args) {
         case 'unban':
             await handleUnbanCommand(message, args);
             break;
+        case 'warn':
+            await handleWarnCommand(message, args);
+            break;
         default:
             message.channel.send("Unknown command.");
     }
 }
+
+async function handleWarnCommand(message, args) {
+    if (!message.member.permissions.has(PermissionsBitField.Flags.KickMembers)) {
+        return message.reply("You don't have permission to warn users.");
+    }
+
+    const userMention = message.mentions.members.first();
+    const reason = args.slice(1).join(' ') || 'No reason provided';
+
+    if (!userMention) {
+        return message.reply("Please mention a valid user to warn.");
+    }
+
+    try {
+        await userMention.send(`You have been warned for the following reason: ${reason}`);
+        message.channel.send(`User ${userMention} has been warned.`);
+    } catch (error) {
+        console.error(error);
+        message.channel.send('Error warning the user or the user has DMs disabled.');
+    }
+}
+
 
 async function handleUnbanCommand(message, args) {
     if (!message.member.permissions.has(PermissionsBitField.Flags.BanMembers)) {
