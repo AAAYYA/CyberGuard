@@ -43,6 +43,9 @@ async function handleCommand(command, message, args) {
         case 'mute':
             await handleMuteCommand(message, args);
             break;
+        case 'unmute':
+            await handleUnmuteCommand(message, args);
+            break;
         default:
             message.channel.send("Unknown command.");
     }
@@ -308,23 +311,49 @@ async function handleMuteCommand(message, args) {
         return message.reply("I cannot mute this user. Ensure my role is above theirs.");
     }
 
+    if (!duration) {
+        return message.reply("Please provide a valid duration in seconds to mute the user.");
+    }
+
     try {
-        const muteReason = duration ? `Muted for ${duration} seconds.` : "Muted indefinitely.";
+        const muteReason = `Muted for ${duration} seconds.`;
 
-        await userToMute.timeout(duration ? duration * 1000 : null, muteReason);
-        message.channel.send(`${userToMute.user.tag} has been muted. ${duration ? `Duration: ${duration} seconds.` : ''}`);
+        await userToMute.timeout(duration * 1000, muteReason);
+        message.channel.send(`${userToMute.user.tag} has been muted. Duration: ${duration} seconds.`);
 
-        if (duration) {
-            setTimeout(() => {
-                if (userToMute.isCommunicationDisabled()) {
-                    userToMute.timeout(null, "Mute duration expired.")
-                        .catch(err => console.error("Failed to unmute after duration:", err));
-                }
-            }, duration * 1000);
-        }
+        setTimeout(() => {
+            if (userToMute.isCommunicationDisabled()) {
+                userToMute.timeout(null, "Mute duration expired.")
+                    .catch(err => console.error("Failed to unmute after duration:", err));
+            }
+        }, duration * 1000);
     } catch (error) {
         console.error(error);
         message.channel.send("An error occurred while muting the user.");
+    }
+}
+
+async function handleUnmuteCommand(message, args) {
+    if (!message.member.permissions.has(PermissionsBitField.Flags.ModerateMembers)) {
+        return message.reply("You don't have permission to unmute members.");
+    }
+
+    const userToUnmute = message.mentions.members.first();
+
+    if (!userToUnmute) {
+        return message.reply("Please mention a valid user to unmute.");
+    }
+
+    if (!userToUnmute.isCommunicationDisabled()) {
+        return message.reply(`${userToUnmute.user.tag} is not currently muted.`);
+    }
+
+    try {
+        await userToUnmute.timeout(null, "Unmuted by moderator.");
+        message.channel.send(`${userToUnmute.user.tag} has been unmuted.`);
+    } catch (error) {
+        console.error(error);
+        message.channel.send("An error occurred while unmuting the user.");
     }
 }
 
