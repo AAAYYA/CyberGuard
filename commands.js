@@ -11,7 +11,7 @@ async function handleCommand(command, message, args) {
             await handleUnlockCommand(message);
             break;
         case 'lockdown':
-            await handleLockdownCommand(message, args);
+            await handleLockdownCommand(message);
             break;
         case 'unlockall':
             await handleUnlockAllCommand(message);
@@ -24,9 +24,6 @@ async function handleCommand(command, message, args) {
             break;
         case 'clear':
             await handleClearCommand(message);
-            break;
-        case 'temp':
-            await handleTempCommand(message, args);
             break;
         case 'ban':
             await handleBanCommand(message, args);
@@ -42,6 +39,9 @@ async function handleCommand(command, message, args) {
             break;
         case 'snipe':
             await handleSnipeCommand(message);
+            break;
+        case 'mute':
+            await handleMuteCommand(message, args);
             break;
         default:
             message.channel.send("Unknown command.");
@@ -216,19 +216,14 @@ async function handleUnlockCommand(message) {
     }
 }
 
-async function handleLockdownCommand(message, args) {
+async function handleLockdownCommand(message) {
     if (!message.member.permissions.has(PermissionsBitField.Flags.ManageChannels)) {
         return message.reply("You don't have permission to initiate a lockdown.");
     }
 
-    if (!args[0] || isNaN(parseInt(args[0]))) {
-        return message.reply("Please provide a valid time duration in seconds for the lockdown (e.g., +lockdown 60).");
-    }
-
-    const duration = parseInt(args[0]);
-
     try {
         const channels = message.guild.channels.cache;
+
         channels.forEach(async (channel) => {
             if (channel.type === ChannelType.GuildText) {
                 await channel.permissionOverwrites.edit(message.guild.roles.everyone, {
@@ -237,18 +232,7 @@ async function handleLockdownCommand(message, args) {
             }
         });
 
-        message.channel.send(`The server has been locked down for ${duration} seconds.`);
-
-        setTimeout(async () => {
-            channels.forEach(async (channel) => {
-                if (channel.type === ChannelType.GuildText) {
-                    await channel.permissionOverwrites.edit(message.guild.roles.everyone, {
-                        SendMessages: true
-                    });
-                }
-            });
-            message.channel.send("Lockdown lifted, all channels have been unlocked.");
-        }, duration * 1000);
+        message.channel.send("The server has been locked down. Use `+unlockall` to unlock.");
     } catch (error) {
         console.error(error);
         message.channel.send('There was an error during the lockdown process.');
@@ -308,37 +292,39 @@ async function handleUnvalCommand(message) {
     valInterval = null;
 }
 
-async function handleTempCommand(message, args) {
-    if (!message.member.permissions.has(PermissionsBitField.Flags.ManageMessages)) {
-        return message.reply("You don't have permission to use this command.");
+async function handleMuteCommand(message, args) {
+    if (!message.member.permissions.has(PermissionsBitField.Flags.ModerateMembers)) {
+        return message.reply("You don't have permission to mute members.");
     }
 
-    const userMention = message.mentions.members.first();
-    const duration = parseInt(args[1]);
+    const userToMute = message.mentions.members.first();
+    const duration = args[1] ? parseInt(args[1]) : null;
 
-    if (!userMention || isNaN(duration)) {
-        return message.reply("Please mention a valid user and time in seconds (e.g. +temp @user 60).");
+    if (!userToMute) {
+        return message.reply("Please mention a valid user to mute.");
+    }
+
+    if (!userToMute.moderatable) {
+        return message.reply("I cannot mute this user. Ensure my role is above theirs.");
     }
 
     try {
-        const channels = message.guild.channels.cache;
+        const muteReason = duration ? `Muted for ${duration} seconds.` : "Muted indefinitely.";
 
-        channels.forEach(async (channel) => {
-            if (channel.type === ChannelType.GuildText && channel.permissionOverwrites) {
-                await channel.permissionOverwrites.edit(userMention, { SendMessages: false });
-            }
-        });
+        await userToMute.timeout(duration ? duration * 1000 : null, muteReason);
+        message.channel.send(`${userToMute.user.tag} has been muted. ${duration ? `Duration: ${duration} seconds.` : ''}`);
 
-        setTimeout(async () => {
-            channels.forEach(async (channel) => {
-                if (channel.type === ChannelType.GuildText && channel.permissionOverwrites) {
-                    await channel.permissionOverwrites.edit(userMention, { SendMessages: true });
+        if (duration) {
+            setTimeout(() => {
+                if (userToMute.isCommunicationDisabled()) {
+                    userToMute.timeout(null, "Mute duration expired.")
+                        .catch(err => console.error("Failed to unmute after duration:", err));
                 }
-            });
-        }, duration * 1000);
+            }, duration * 1000);
+        }
     } catch (error) {
         console.error(error);
-        message.channel.send('Error applying the temporary restriction.');
+        message.channel.send("An error occurred while muting the user.");
     }
 }
 
