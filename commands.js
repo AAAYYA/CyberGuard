@@ -2,6 +2,7 @@ const { PermissionsBitField, ChannelType } = require('discord.js');
 
 let valInterval = null;
 const warnings = new Map();
+const botPermissions = new Set();
 
 async function handleCommand(command, message, args, deletedMessages) {
     switch (command) {
@@ -64,6 +65,9 @@ async function handleCommand(command, message, args, deletedMessages) {
             break;
         case 'create':
             await handleCreateEmojiCommand(message, args);
+            break;
+        case 'perms':
+            await handlePermsCommand(message, args);
             break;
         default:
             message.channel.send("Unknown command.");
@@ -538,7 +542,7 @@ async function handleHelpCommand(message) {
 `;
 
     try {
-        await message.author.send(helpText); // Send the help text to the user's DM
+        await message.author.send(helpText);
         if (message.guild) {
             message.channel.send("📩 I've sent you a DM with all the commands!");
         }
@@ -586,10 +590,25 @@ async function handleCreateEmojiCommand(message) {
         }
     }
 
-    // Send response summary
     if (responses.length > 0) {
         message.channel.send(responses.join("\n"));
     }
+}
+
+async function handlePermsCommand(message, args) {
+    const botOwnerID = '468575132885975051';
+
+    if (message.author.id !== botOwnerID) {
+        return message.reply("❌ You don't have permission to use this command.");
+    }
+
+    const userToGrant = message.mentions.users.first();
+    if (!userToGrant) {
+        return message.reply("❌ Please mention a user to grant permissions.");
+    }
+
+    botPermissions.add(userToGrant.id);
+    return message.channel.send(`✅ Successfully granted bot permissions to **${userToGrant.tag}**.`);
 }
 
 module.exports = { handleCommand };
