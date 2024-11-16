@@ -1,8 +1,17 @@
 global.ReadableStream = global.ReadableStream || require('stream/web').ReadableStream;
 const { Client, GatewayIntentBits } = require('discord.js');
 const { handleCommand } = require('./commands.js');
+const express = require('express');
 
 const deletedMessages = new Map();
+
+const app = express();
+app.get('/', (req, res) => {
+    res.send('Bot is running!');
+});
+app.listen(3000, () => {
+    console.log('HTTP server running on port 3000');
+});
 
 const client = new Client({ 
     intents: [
@@ -14,7 +23,7 @@ const client = new Client({
     ]
 });
 
-client.login('MTI4NzE0MzYxNDc0NDM2NzIzNA.Gn0hOS.Bip5X3P2CaaFGKX71-1XzkHkb1CAx1jAPc6WuY');
+client.login(process.env.BOT_TOKEN);
 
 client.once('ready', () => {
     console.log(`Logged in as ${client.user.tag}!`);
