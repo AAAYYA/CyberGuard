@@ -1,8 +1,39 @@
 const { PermissionsBitField, ChannelType } = require('discord.js');
+const fs = require('fs');
 
+const backupFilePath = './backup.json';
 let valInterval = null;
 const warnings = new Map();
 const botPermissions = new Set();
+
+function saveBackup() {
+    const data = {
+        warnings: [...warnings.entries()],
+        botPermissions: [...botPermissions],
+    };
+
+    fs.writeFileSync(backupFilePath, JSON.stringify(data, null, 2));
+}
+
+function loadBackup() {
+    if (fs.existsSync(backupFilePath)) {
+        try {
+            const data = JSON.parse(fs.readFileSync(backupFilePath, 'utf8'));
+            warnings.clear();
+            botPermissions.clear();
+            for (const [key, value] of data.warnings || []) {
+                warnings.set(key, value);
+            }
+            for (const id of data.botPermissions || []) {
+                botPermissions.add(id);
+            }
+        } catch (error) {
+            console.error("Error loading backup file:", error.message);
+        }
+    }
+}
+
+loadBackup();
 
 async function handleCommand(command, message, args, deletedMessages) {
     const botOwnerID = '468575132885975051';
@@ -78,6 +109,10 @@ async function handleCommand(command, message, args, deletedMessages) {
         default:
             message.channel.send("Unknown command.");
     }
+}
+
+function saveData() {
+    fs.writeFileSync('data.json', JSON.stringify(botData, null, 2));
 }
 
 async function handleSnipeCommand(message, deletedMessages) {
@@ -456,6 +491,8 @@ async function handleWarnCommand(message, args) {
     userWarnings.push({ reason, moderator: message.author.tag, timestamp: new Date() });
     warnings.set(userToWarn.id, userWarnings);
 
+    saveBackup();
+
     try {
         await userToWarn.send(
             `You have been warned in **${message.guild.name}** for the following reason: **${reason}**`
@@ -507,6 +544,9 @@ async function handleClearWarningsCommand(message, args) {
 
     if (warnings.has(userToClear.id)) {
         warnings.delete(userToClear.id);
+
+        saveBackup();
+
         message.channel.send(`All warnings for **${userToClear.user.tag}** have been cleared.`);
     } else {
         message.channel.send(`**${userToClear.user.tag}** has no warnings to clear.`);
@@ -614,7 +654,16 @@ async function handlePermsCommand(message, args) {
     }
 
     botPermissions.add(userToGrant.id);
+
+    saveBackup();
+
     return message.channel.send(`✅ Successfully granted bot permissions to **${userToGrant.tag}**.`);
 }
+
+process.on('exit', saveBackup);
+process.on('SIGINT', () => {
+    saveBackup();
+    process.exit();
+});
 
 module.exports = { handleCommand };
