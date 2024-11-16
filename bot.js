@@ -1,3 +1,4 @@
+require('dotenv').config();
 global.ReadableStream = global.ReadableStream || require('stream/web').ReadableStream;
 const { Client, GatewayIntentBits } = require('discord.js');
 const { handleCommand } = require('./commands.js');
