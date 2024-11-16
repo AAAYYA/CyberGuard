@@ -2,7 +2,7 @@ const { PermissionsBitField, ChannelType } = require('discord.js');
 
 let valInterval = null;
 
-async function handleCommand(command, message, args) {
+async function handleCommand(command, message, args, deletedMessages) {
     switch (command) {
         case 'lock':
             await handleLockCommand(message);
@@ -38,7 +38,7 @@ async function handleCommand(command, message, args) {
             await handleWarnCommand(message, args);
             break;
         case 'snipe':
-            await handleSnipeCommand(message);
+            await handleSnipeCommand(message, deletedMessages);
             break;
         case 'mute':
             await handleMuteCommand(message, args);
@@ -46,42 +46,27 @@ async function handleCommand(command, message, args) {
         case 'unmute':
             await handleUnmuteCommand(message, args);
             break;
+        case 'renew':
+            await handleRenewCommand(message);
+            break;
         default:
             message.channel.send("Unknown command.");
     }
 }
 
-async function handleSnipeCommand(message) {
-    const snipeMessage = message.channel.lastMessage;
-    if (!snipeMessage) {
-        return message.channel.send("No message to snipe.");
+async function handleSnipeCommand(message, deletedMessages) {
+    const snipe = deletedMessages.get(message.channel.id);
+
+    if (!snipe) {
+        return message.channel.send("There's nothing to snipe!");
     }
 
-    const { author, content } = snipeMessage;
-    message.channel.send(`Sniped message from ${author}: ${content}`);
+    const { content, author, timestamp } = snipe;
+
+    message.channel.send(
+        `🕒 **${new Date(timestamp).toLocaleString()}**\n💬 **${author}**: ${content || "*[No content]*"}`
+    );
 }
-
-async function handleWarnCommand(message, args) {
-    if (!message.member.permissions.has(PermissionsBitField.Flags.KickMembers)) {
-        return message.reply("You don't have permission to warn users.");
-    }
-
-    const userMention = message.mentions.members.first();
-    const reason = args.slice(1).join(' ') || 'No reason provided';
-
-    if (!userMention) {
-        return message.reply("Please mention a valid user to warn.");
-    }
-
-    try {
-        await userMention.send(`You have been warned for the following reason: ${reason}`);
-        message.channel.send(`User ${userMention} has been warned.`);
-    } catch (error) {
-        console.error(error);
-        message.channel.send('Error warning the user or the user has DMs disabled.');
-    }
-}
-
 
 async function handleUnbanCommand(message, args) {
     if (!message.member.permissions.has(PermissionsBitField.Flags.BanMembers)) {
@@ -268,7 +253,7 @@ async function handleValCommand(message) {
         return message.reply("The message is already being sent every second.");
     }
 
-    const valentinaMention = '<@1221196916747141182>';
+    const valentinaMention = '<@1306619167452958762>';
     const valMessage = `réponds mp ${valentinaMention}`;
 
     valInterval = setInterval(async () => {
@@ -354,6 +339,47 @@ async function handleUnmuteCommand(message, args) {
     } catch (error) {
         console.error(error);
         message.channel.send("An error occurred while unmuting the user.");
+    }
+}
+
+async function handleRenewCommand(message) {
+    if (!message.member.permissions.has(PermissionsBitField.Flags.ManageChannels)) {
+        return message.reply("You don't have permission to renew channels.");
+    }
+
+    try {
+        const channels = message.guild.channels.cache;
+
+        channels.forEach(async (channel) => {
+            const channelName = channel.name;
+            const channelType = channel.type;
+            const channelPosition = channel.position;
+            const channelPermissions = channel.permissionOverwrites.cache.map((overwrite) => ({
+                id: overwrite.id,
+                allow: overwrite.allow.bitfield,
+                deny: overwrite.deny.bitfield,
+            }));
+
+            const parent = channel.parent; // Save category
+
+            await channel.delete("Channel renewal initiated.");
+
+            const newChannel = await message.guild.channels.create(channelName, {
+                type: channelType,
+                position: channelPosition,
+                parent: parent,
+                permissionOverwrites: channelPermissions,
+            });
+
+            if (channelType === ChannelType.GuildText) {
+                newChannel.setRateLimitPerUser(0); // Clear slow mode
+            }
+        });
+
+        message.channel.send("All server channels have been renewed.");
+    } catch (error) {
+        console.error(error);
+        message.channel.send("An error occurred while renewing the channels.");
     }
 }
 

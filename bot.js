@@ -2,6 +2,8 @@ global.ReadableStream = global.ReadableStream || require('stream/web').ReadableS
 const { Client, GatewayIntentBits } = require('discord.js');
 const { handleCommand } = require('./commands.js');
 
+const deletedMessages = new Map();
+
 const client = new Client({ 
     intents: [
         GatewayIntentBits.Guilds,
@@ -23,5 +25,16 @@ client.on('messageCreate', async (message) => {
     const args = message.content.slice(1).trim().split(/ +/);
     const command = args.shift().toLowerCase();
 
-    await handleCommand(command, message, args);
+    await handleCommand(command, message, args, deletedMessages);
+});
+
+client.on('messageDelete', (message) => {
+    if (message.partial || !message.guild || message.author.bot) return;
+    deletedMessages.set(message.channel.id, {
+        content: message.content,
+        author: message.author.tag,
+        timestamp: message.createdTimestamp,
+    });
+
+    setTimeout(() => deletedMessages.delete(message.channel.id), 300000);
 });
