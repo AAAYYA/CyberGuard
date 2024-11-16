@@ -1,6 +1,20 @@
 const { PermissionsBitField, ChannelType } = require('discord.js');
 const fs = require('fs');
 
+const raidProtectionState = {
+    joinTimestamps: new Map(),
+    messageTimestamps: new Map(),
+    cooldownUsers: new Set(),
+};
+
+const RAID_PROTECTION_SETTINGS = {
+    maxMessagesPerSecond: 5,
+    joinDetectionWindow: 10000,
+    maxJoinsPerWindow: 5,
+    accountAgeLimit: 7,
+    muteDuration: 10 * 60 * 1000,
+};
+
 const backupFilePath = './backup.json';
 let valInterval = null;
 const warnings = new Map();
@@ -711,8 +725,6 @@ async function handleWhitelistWordCommand(message, args) {
 }
 
 async function filterBlacklistedWords(message) {
-    if (message.author.bot) return;
-
     const words = message.content.toLowerCase().split(/\s+/);
     for (const word of words) {
         if (blacklist.has(word)) {
@@ -724,10 +736,90 @@ async function filterBlacklistedWords(message) {
     }
 }
 
+async function detectAndHandleSpam(message) {
+    const now = Date.now();
+    const timestamps = raidProtectionState.messageTimestamps.get(message.author.id) || [];
+    const filtered = timestamps.filter(timestamp => now - timestamp < 1000);
+    filtered.push(now);
+    raidProtectionState.messageTimestamps.set(message.author.id, filtered);
+
+    console.log(`User: ${message.author.tag}, Timestamps: ${filtered.length}`); // Debug log
+
+    if (filtered.length > RAID_PROTECTION_SETTINGS.maxMessagesPerSecond) {
+        console.log(`Spam detected for user: ${message.author.tag}`); // Debug log
+        await message.delete().catch(() => null);
+        await muteUser(message.member, RAID_PROTECTION_SETTINGS.muteDuration);
+        return message.channel.send(
+            `🚨 **${message.author.tag}** has been muted for spamming.`
+        );
+    }
+}
+
+async function detectAndHandleMassJoins(member) {
+    const now = Date.now();
+    const guildId = member.guild.id;
+
+    const joinTimestamps = raidProtectionState.joinTimestamps.get(guildId) || [];
+    const filtered = joinTimestamps.filter(timestamp => now - timestamp < RAID_PROTECTION_SETTINGS.joinDetectionWindow);
+    filtered.push(now);
+
+    raidProtectionState.joinTimestamps.set(guildId, filtered);
+
+    console.log(`Guild: ${member.guild.name}, Joins Detected: ${filtered.length}`); // Debug log
+
+    if (filtered.length > RAID_PROTECTION_SETTINGS.maxJoinsPerWindow) {
+        console.log("Mass-join detected. Locking the server."); // Debug log
+        member.guild.channels.cache.find(channel => channel.type === ChannelType.GuildText)?.send(
+            "🚨 **Mass-join detected! Locking the server to prevent raids.**"
+        );
+        await lockAllChannels(member.guild);
+    }
+}
+
+async function enforceAccountAgeRestriction(member) {
+    const accountAge = (Date.now() - member.user.createdAt) / (1000 * 60 * 60 * 24); // Age in days
+
+    if (accountAge < RAID_PROTECTION_SETTINGS.accountAgeLimit) {
+        await member.send(
+            "🚨 Your account is too new to join this server. Please try again later."
+        ).catch(() => null);
+        await member.kick("Account too new for server restrictions.");
+    }
+}
+
+async function muteUser(member, duration) {
+    if (!member.moderatable) {
+        console.error(`Cannot mute user: ${member.user.tag}. Ensure bot role is higher.`);
+        return;
+    }
+    try {
+        console.log(`Muting user: ${member.user.tag} for ${duration / 1000} seconds.`);
+        await member.timeout(duration, "Muted by raid protection system.");
+    } catch (error) {
+        console.error(`Failed to mute user ${member.user.tag}:`, error);
+    }
+}
+
+async function lockAllChannels(guild) {
+    const channels = guild.channels.cache;
+    channels.forEach(async channel => {
+        if (channel.type === ChannelType.GuildText) {
+            console.log(`Locking channel: ${channel.name}`); // Debug log
+            await channel.permissionOverwrites.edit(guild.roles.everyone, { SendMessages: false });
+        }
+    });
+}
+
 process.on('exit', saveBackup);
 process.on('SIGINT', () => {
     saveBackup();
     process.exit();
 });
 
-module.exports = { handleCommand, filterBlacklistedWords };
+module.exports = {
+    handleCommand,
+    filterBlacklistedWords,
+    detectAndHandleSpam,
+    detectAndHandleMassJoins,
+    enforceAccountAgeRestriction,
+};
