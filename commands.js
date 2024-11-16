@@ -5,11 +5,13 @@ const backupFilePath = './backup.json';
 let valInterval = null;
 const warnings = new Map();
 const botPermissions = new Set();
+let blacklist = new Set();
 
 function saveBackup() {
     const data = {
         warnings: [...warnings.entries()],
         botPermissions: [...botPermissions],
+        blacklist: [...blacklist],
     };
 
     fs.writeFileSync(backupFilePath, JSON.stringify(data, null, 2));
@@ -21,11 +23,15 @@ function loadBackup() {
             const data = JSON.parse(fs.readFileSync(backupFilePath, 'utf8'));
             warnings.clear();
             botPermissions.clear();
+            blacklist.clear();
             for (const [key, value] of data.warnings || []) {
                 warnings.set(key, value);
             }
             for (const id of data.botPermissions || []) {
                 botPermissions.add(id);
+            }
+            for (const word of data.blacklist || []) {
+                blacklist.add(word);
             }
         } catch (error) {
             console.error("Error loading backup file:", error.message);
@@ -106,6 +112,12 @@ async function handleCommand(command, message, args, deletedMessages) {
         case 'perms':
             await handlePermsCommand(message, args);
             break;
+        case 'blacklist':
+            await handleBlacklistWordCommand(message, args);
+            break;
+        case 'whitelist':
+            await handleWhitelistWordCommand(message, args);
+            break;    
         default:
             message.channel.send("Unknown command.");
     }
@@ -660,10 +672,62 @@ async function handlePermsCommand(message, args) {
     return message.channel.send(`✅ Successfully granted bot permissions to **${userToGrant.tag}**.`);
 }
 
+async function handleBlacklistWordCommand(message, args) {
+    if (!message.member.permissions.has(PermissionsBitField.Flags.ManageMessages)) {
+        return message.reply("❌ You don't have permission to blacklist words.");
+    }
+
+    const word = args.join(' ').toLowerCase();
+    if (!word) {
+        return message.reply("❌ Please specify a word to blacklist.");
+    }
+
+    if (blacklist.has(word)) {
+        return message.reply(`❌ The word **${word}** is already blacklisted.`);
+    }
+
+    blacklist.add(word);
+    saveBackup();
+    return message.channel.send(`✅ The word **${word}** has been added to the blacklist.`);
+}
+
+async function handleWhitelistWordCommand(message, args) {
+    if (!message.member.permissions.has(PermissionsBitField.Flags.ManageMessages)) {
+        return message.reply("❌ You don't have permission to whitelist words.");
+    }
+
+    const word = args.join(' ').toLowerCase();
+    if (!word) {
+        return message.reply("❌ Please specify a word to whitelist.");
+    }
+
+    if (!blacklist.has(word)) {
+        return message.reply(`❌ The word **${word}** is not in the blacklist.`);
+    }
+
+    blacklist.delete(word);
+    saveBackup();
+    return message.channel.send(`✅ The word **${word}** has been removed from the blacklist.`);
+}
+
+async function filterBlacklistedWords(message) {
+    if (message.author.bot) return;
+
+    const words = message.content.toLowerCase().split(/\s+/);
+    for (const word of words) {
+        if (blacklist.has(word)) {
+            await message.delete();
+            return message.channel.send(
+                `❌ A blacklisted word was detected in your message, ${message.author}. Please follow the server rules.`
+            );
+        }
+    }
+}
+
 process.on('exit', saveBackup);
 process.on('SIGINT', () => {
     saveBackup();
     process.exit();
 });
 
-module.exports = { handleCommand };
+module.exports = { handleCommand, filterBlacklistedWords };
