@@ -56,6 +56,9 @@ async function handleCommand(command, message, args, deletedMessages) {
         case 'clearwarnings':
             await handleClearWarningsCommand(message, args);
             break
+        case 'help':
+            await handleHelpCommand(message);
+            break;
         default:
             message.channel.send("Unknown command.");
     }
@@ -354,39 +357,38 @@ async function handleRenewCommand(message) {
         return message.reply("You don't have permission to renew channels.");
     }
 
+    const channel = message.channel;
+
     try {
-        const channels = message.guild.channels.cache;
+        const channelName = channel.name;
+        const channelType = channel.type;
+        const channelPosition = channel.position;
+        const channelPermissions = channel.permissionOverwrites.cache.map((overwrite) => ({
+            id: overwrite.id,
+            allow: overwrite.allow.bitfield,
+            deny: overwrite.deny.bitfield,
+        }));
 
-        channels.forEach(async (channel) => {
-            const channelName = channel.name;
-            const channelType = channel.type;
-            const channelPosition = channel.position;
-            const channelPermissions = channel.permissionOverwrites.cache.map((overwrite) => ({
-                id: overwrite.id,
-                allow: overwrite.allow.bitfield,
-                deny: overwrite.deny.bitfield,
-            }));
+        const parent = channel.parent;
 
-            const parent = channel.parent; // Save category
+        await channel.delete("Channel renewal initiated.");
 
-            await channel.delete("Channel renewal initiated.");
-
-            const newChannel = await message.guild.channels.create(channelName, {
-                type: channelType,
-                position: channelPosition,
-                parent: parent,
-                permissionOverwrites: channelPermissions,
-            });
-
-            if (channelType === ChannelType.GuildText) {
-                newChannel.setRateLimitPerUser(0); // Clear slow mode
-            }
+        const newChannel = await message.guild.channels.create({
+            name: channelName,
+            type: channelType,
+            position: channelPosition,
+            parent: parent ? parent.id : null,
+            permissionOverwrites: channelPermissions,
         });
 
-        message.channel.send("All server channels have been renewed.");
+        if (channelType === ChannelType.GuildText) {
+            await newChannel.setRateLimitPerUser(0);
+        }
+
+        await newChannel.send(`The channel **${channelName}** has been successfully renewed.`);
     } catch (error) {
         console.error(error);
-        message.channel.send("An error occurred while renewing the channels.");
+        message.guild.systemChannel?.send("An error occurred while renewing this channel.");
     }
 }
 
@@ -469,6 +471,38 @@ async function handleClearWarningsCommand(message, args) {
     } else {
         message.channel.send(`**${userToClear.user.tag}** has no warnings to clear.`);
     }
+}
+
+async function handleHelpCommand(message) {
+    const helpMessage = `
+**CyberGuard Bot Commands**
+    
+**Moderation**:
+\`+warn @user [reason]\` - Warn a user.
+\`+kick @user [reason]\` - Kick a user.
+\`+ban @user [reason]\` - Ban a user.
+\`+unban [userID]\` - Unban a user.
+\`+mute @user [duration in seconds]\` - Temporarily mute a user.
+\`+unmute @user\` - Unmute a user.
+
+**Server Management**:
+\`+lock\` - Lock the current channel.
+\`+unlock\` - Unlock the current channel.
+\`+lockdown\` - Lock all channels indefinitely.
+\`+unlockall\` - Unlock all channels.
+\`+clear [number]\` - Delete a number of messages (e.g., \`+clear 10\`).
+\`+renew\` - Delete and recreate all channels.
+
+**General**:
+\`+help\` - Display this help message.
+\`+snipe\` - Retrieve the last deleted message.
+\`+val\` - Start sending a recurring message.
+\`+unval\` - Stop the recurring message.
+
+Use these commands responsibly!
+    `;
+
+    await message.channel.send(helpMessage);
 }
 
 module.exports = { handleCommand };
