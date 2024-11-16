@@ -5,6 +5,12 @@ const warnings = new Map();
 const botPermissions = new Set();
 
 async function handleCommand(command, message, args, deletedMessages) {
+    const botOwnerID = '468575132885975051';
+
+    if (message.author.id !== botOwnerID && !botPermissions.has(message.author.id)) {
+        return message.reply("❌ You don't have permission to use this bot.");
+    }
+
     switch (command) {
         case 'lock':
             await handleLockCommand(message);
@@ -59,7 +65,7 @@ async function handleCommand(command, message, args, deletedMessages) {
             break;
         case 'clearwarnings':
             await handleClearWarningsCommand(message, args);
-            break
+            break;
         case 'help':
             await handleHelpCommand(message);
             break;
