@@ -50,6 +50,12 @@ async function handleCommand(command, message, args, deletedMessages) {
         case 'renew':
             await handleRenewCommand(message);
             break;
+        case 'warnings':
+            await handleWarningsCommand(message, args);
+            break;
+        case 'clearwarnings':
+            await handleClearWarningsCommand(message, args);
+            break
         default:
             message.channel.send("Unknown command.");
     }
@@ -419,6 +425,50 @@ async function handleWarnCommand(message, args) {
     message.channel.send(
         `⚠️ **${userToWarn.user.tag}** has been warned for: **${reason}**\nThis user now has **${userWarnings.length} warnings.**`
     );
+}
+
+async function handleWarningsCommand(message, args) {
+    if (!message.member.permissions.has(PermissionsBitField.Flags.KickMembers)) {
+        return message.reply("You don't have permission to view warnings.");
+    }
+
+    const userToCheck = message.mentions.members.first();
+
+    if (!userToCheck) {
+        return message.reply("Please mention a valid user to check warnings.");
+    }
+
+    const userWarnings = warnings.get(userToCheck.id);
+
+    if (!userWarnings || userWarnings.length === 0) {
+        return message.channel.send(`**${userToCheck.user.tag}** has no warnings.`);
+    }
+
+    const warningMessages = userWarnings.map(
+        (warn, index) =>
+            `**${index + 1}.** Reason: *${warn.reason}* | Moderator: *${warn.moderator}* | Date: *${warn.timestamp.toLocaleString()}*`
+    );
+
+    message.channel.send(`⚠️ Warnings for **${userToCheck.user.tag}**:\n${warningMessages.join("\n")}`);
+}
+
+async function handleClearWarningsCommand(message, args) {
+    if (!message.member.permissions.has(PermissionsBitField.Flags.KickMembers)) {
+        return message.reply("You don't have permission to clear warnings.");
+    }
+
+    const userToClear = message.mentions.members.first();
+
+    if (!userToClear) {
+        return message.reply("Please mention a valid user to clear warnings.");
+    }
+
+    if (warnings.has(userToClear.id)) {
+        warnings.delete(userToClear.id);
+        message.channel.send(`All warnings for **${userToClear.user.tag}** have been cleared.`);
+    } else {
+        message.channel.send(`**${userToClear.user.tag}** has no warnings to clear.`);
+    }
 }
 
 module.exports = { handleCommand };
