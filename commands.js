@@ -1,6 +1,7 @@
 const { PermissionsBitField, ChannelType } = require('discord.js');
 
 let valInterval = null;
+const warnings = new Map();
 
 async function handleCommand(command, message, args, deletedMessages) {
     switch (command) {
@@ -381,6 +382,43 @@ async function handleRenewCommand(message) {
         console.error(error);
         message.channel.send("An error occurred while renewing the channels.");
     }
+}
+
+async function handleWarnCommand(message, args) {
+    if (!message.member.permissions.has(PermissionsBitField.Flags.KickMembers)) {
+        return message.reply("You don't have permission to warn users.");
+    }
+
+    const userToWarn = message.mentions.members.first();
+    const reason = args.slice(1).join(' ') || "No reason provided";
+
+    if (!userToWarn) {
+        return message.reply("Please mention a valid user to warn.");
+    }
+
+    if (userToWarn.id === message.author.id) {
+        return message.reply("You cannot warn yourself.");
+    }
+
+    if (!warnings.has(userToWarn.id)) {
+        warnings.set(userToWarn.id, []);
+    }
+
+    const userWarnings = warnings.get(userToWarn.id);
+    userWarnings.push({ reason, moderator: message.author.tag, timestamp: new Date() });
+    warnings.set(userToWarn.id, userWarnings);
+
+    try {
+        await userToWarn.send(
+            `You have been warned in **${message.guild.name}** for the following reason: **${reason}**`
+        );
+    } catch {
+        message.channel.send("The user has DMs disabled or I can't reach them.");
+    }
+
+    message.channel.send(
+        `⚠️ **${userToWarn.user.tag}** has been warned for: **${reason}**\nThis user now has **${userWarnings.length} warnings.**`
+    );
 }
 
 module.exports = { handleCommand };
