@@ -59,6 +59,9 @@ async function handleCommand(command, message, args, deletedMessages) {
         case 'help':
             await handleHelpCommand(message);
             break;
+        case 'create':
+            await handleCreateEmojiCommand(message, args);
+            break;
         default:
             message.channel.send("Unknown command.");
     }
@@ -503,6 +506,50 @@ Use these commands responsibly!
     `;
 
     await message.channel.send(helpMessage);
+}
+
+async function handleCreateEmojiCommand(message) {
+    if (!message.member.permissions.has(PermissionsBitField.Flags.ManageEmojisAndStickers)) {
+        return message.reply("You don't have permission to manage emojis.");
+    }
+
+    const emojiRegex = /<a?:(\w+):(\d+)>/g;
+    const matches = [...message.content.matchAll(emojiRegex)];
+
+    if (matches.length === 0) {
+        return message.reply("Please include valid emojis from other servers in your message.");
+    }
+
+    const responses = [];
+
+    for (const match of matches) {
+        const emojiName = match[1];
+        const emojiId = match[2];
+
+        try {
+            const isAnimated = match[0].startsWith("<a:");
+            const emojiUrl = isAnimated
+                ? `https://cdn.discordapp.com/emojis/${emojiId}.gif`
+                : `https://cdn.discordapp.com/emojis/${emojiId}.webp`;
+
+            const emoji = await message.guild.emojis.create({
+                attachment: emojiUrl,
+                name: emojiName,
+            });
+
+            responses.push(
+                `✅ Emoji **:${emoji.name}:** added successfully${isAnimated ? " (animated)." : "."}`
+            );
+        } catch (error) {
+            console.error(error);
+            responses.push(`❌ Failed to add emoji **${emojiName}**: ${error.message}`);
+        }
+    }
+
+    // Send response summary
+    if (responses.length > 0) {
+        message.channel.send(responses.join("\n"));
+    }
 }
 
 module.exports = { handleCommand };
