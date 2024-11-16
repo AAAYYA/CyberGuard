@@ -24,7 +24,10 @@ async function handleCommand(command, message, args, deletedMessages) {
             await handleUnvalCommand(message);
             break;
         case 'clear':
-            await handleClearCommand(message);
+            await handleClearCommand(message, args);
+            break;
+        case 'clearall':
+            await handleClearAllCommand(message);
             break;
         case 'ban':
             await handleBanCommand(message, args);
@@ -139,17 +142,41 @@ async function handleBanCommand(message, args) {
     }
 }
 
-async function handleClearCommand(message) {
+async function handleClearCommand(message, args) {
     if (!message.member.permissions.has(PermissionsBitField.Flags.ManageMessages)) {
         return message.reply("You don't have permission to clear messages.");
     }
-    
+
+    const amount = parseInt(args[0], 10);
+
+    if (isNaN(amount) || amount <= 0 || amount > 100) {
+        return message.reply("Please provide a valid number of messages to delete (1-100).");
+    }
+
     try {
-        const fetched = await message.channel.messages.fetch({ limit: 100 });
-        await message.channel.bulkDelete(fetched);
+        const fetched = await message.channel.messages.fetch({ limit: amount + 1 });
+
+        await message.channel.bulkDelete(fetched, true);
     } catch (error) {
         console.error(error);
-        message.channel.send('Error clearing the messages.');
+        message.channel.send('Error clearing the messages. Please ensure the messages are less than 14 days old.');
+    }
+}
+
+async function handleClearAllCommand(message) {
+    if (!message.member.permissions.has(PermissionsBitField.Flags.ManageMessages)) {
+        return message.reply("You don't have permission to clear all messages.");
+    }
+
+    try {
+        let fetched;
+        do {
+            fetched = await message.channel.messages.fetch({ limit: 100 });
+            await message.channel.bulkDelete(fetched, true);
+        } while (fetched.size >= 2);
+    } catch (error) {
+        console.error(error);
+        message.channel.send('Error clearing all messages. Please ensure messages are less than 14 days old.');
     }
 }
 
@@ -477,35 +504,48 @@ async function handleClearWarningsCommand(message, args) {
 }
 
 async function handleHelpCommand(message) {
-    const helpMessage = `
+    const helpText = `
 **CyberGuard Bot Commands**
-    
-**Moderation**:
-\`+warn @user [reason]\` - Warn a user.
-\`+kick @user [reason]\` - Kick a user.
-\`+ban @user [reason]\` - Ban a user.
-\`+unban [userID]\` - Unban a user.
-\`+mute @user [duration in seconds]\` - Temporarily mute a user.
-\`+unmute @user\` - Unmute a user.
+*Here is a list of commands you can use:*
 
-**Server Management**:
-\`+lock\` - Lock the current channel.
-\`+unlock\` - Unlock the current channel.
-\`+lockdown\` - Lock all channels indefinitely.
-\`+unlockall\` - Unlock all channels.
-\`+clear [number]\` - Delete a number of messages (e.g., \`+clear 10\`).
-\`+renew\` - Delete and recreate all channels.
+**Moderation:**
+- \`+mute @user [duration]\`: Mute a user for a specified duration (in seconds).
+- \`+unmute @user\`: Unmute a previously muted user.
+- \`+warn @user [reason]\`: Warn a user with an optional reason.
+- \`+ban @user [reason]\`: Ban a user with an optional reason.
+- \`+unban [user ID]\`: Unban a user by their ID.
+- \`+kick @user [reason]\`: Kick a user from the server.
 
-**General**:
-\`+help\` - Display this help message.
-\`+snipe\` - Retrieve the last deleted message.
-\`+val\` - Start sending a recurring message.
-\`+unval\` - Stop the recurring message.
+**Server Management:**
+- \`+lock\`: Lock the current channel (prevent messages from everyone).
+- \`+unlock\`: Unlock the current channel (allow messages again).
+- \`+lockdown\`: Lock all text channels on the server.
+- \`+unlockall\`: Unlock all text channels on the server.
+- \`+renew\`: Recreate the current channel (deletes and recreates it with the same settings).
+- \`+clear [number]\`: Delete the specified number of recent messages (does not include the \`+clear\` message itself).
+- \`+clearall\`: Clear **all messages** in the current channel (only messages less than 14 days old can be deleted).
 
-Use these commands responsibly!
-    `;
+**Utility:**
+- \`+snipe\`: View the most recently deleted message in the channel.
+- \`+help\`: Display this help menu.
+- \`+createemoji [emoji(s)]\`: Add emoji(s) from another server to your current server.
 
-    await message.channel.send(helpMessage);
+**Fun:**
+- \`+val\`: Send "réponds mp" with @Valentina's mention every second in all text channels.
+- \`+unval\`: Stop the \`+val\` spam.
+
+*Need further assistance? Contact an admin!*
+`;
+
+    try {
+        await message.author.send(helpText); // Send the help text to the user's DM
+        if (message.guild) {
+            message.channel.send("📩 I've sent you a DM with all the commands!");
+        }
+    } catch (error) {
+        console.error(error);
+        message.channel.send("❌ I couldn't send you a DM. Please check your DM settings and try again.");
+    }
 }
 
 async function handleCreateEmojiCommand(message) {
