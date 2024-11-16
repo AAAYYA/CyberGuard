@@ -1,7 +1,7 @@
 require('dotenv').config();
 global.ReadableStream = global.ReadableStream || require('stream/web').ReadableStream;
 const { Client, GatewayIntentBits } = require('discord.js');
-const { handleCommand } = require('./commands.js');
+const { handleCommand, filterBlacklistedWords } = require('./commands.js');
 const express = require('express');
 
 const deletedMessages = new Map();
@@ -31,11 +31,16 @@ client.once('ready', () => {
 });
 
 client.on('messageCreate', async (message) => {
-    if (message.author.bot || !message.content.startsWith('+')) return;
-    const args = message.content.slice(1).trim().split(/ +/);
-    const command = args.shift().toLowerCase();
+    if (message.author.bot) return;
 
-    await handleCommand(command, message, args, deletedMessages);
+    await filterBlacklistedWords(message);
+
+    if (message.content.startsWith('+')) {
+        const args = message.content.slice(1).trim().split(/ +/);
+        const command = args.shift().toLowerCase();
+
+        await handleCommand(command, message, args, deletedMessages);
+    }
 });
 
 client.on('messageDelete', (message) => {
