@@ -1,20 +1,34 @@
 require('dotenv').config();
 global.ReadableStream = global.ReadableStream || require('stream/web').ReadableStream;
+
 const {
     Client,
     GatewayIntentBits,
     ActionRowBuilder,
     StringSelectMenuBuilder,
-    EmbedBuilder
+    EmbedBuilder,
 } = require('discord.js');
 const {
     handleCommand,
     filterBlacklistedWords,
     detectAndHandleSpam,
     detectAndHandleMassJoins,
-    enforceAccountAgeRestriction
+    enforceAccountAgeRestriction,
 } = require('./commands.js');
 const express = require('express');
+const fs = require('fs');
+
+const botPermissions = new Set();
+
+const backupFilePath = './backup.json';
+if (fs.existsSync(backupFilePath)) {
+    try {
+        const backupData = JSON.parse(fs.readFileSync(backupFilePath, 'utf8'));
+        (backupData.botPermissions || []).forEach((id) => botPermissions.add(id));
+    } catch (error) {
+        console.error('Erreur lors du chargement des permissions du bot :', error);
+    }
+}
 
 const deletedMessages = new Map();
 
@@ -22,7 +36,9 @@ const app = express();
 app.get('/', (req, res) => {
     res.send('Bot en cours d\'exécution !');
 });
-app.listen(3000, () => {});
+app.listen(3000, () => {
+    console.log('Serveur HTTP actif sur le port 3000');
+});
 
 const client = new Client({
     intents: [
@@ -30,126 +46,143 @@ const client = new Client({
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildMembers,
-        GatewayIntentBits.GuildVoiceStates
-    ]
+        GatewayIntentBits.GuildVoiceStates,
+    ],
 });
 
 client.login(process.env.BOT_TOKEN);
 
-client.once('ready', () => {});
+client.once('ready', () => {
+    console.log(`Bot connecté en tant que ${client.user.tag}`);
+});
+
+client.on('guildMemberAdd', async (member) => {
+    try {
+        const username = member.user.username.toLowerCase();
+
+        if (username.includes('caillou')) {
+            await member.kick('Nuh uh caillou.');
+            console.log(`Membre expulsé : ${member.user.tag} (raison : caillou nono")`);
+            return;
+        }
+
+        await enforceAccountAgeRestriction(member);
+        await detectAndHandleMassJoins(member);
+
+        const roles = {
+            nomade: '1294636303744499733',
+            gosse_des_rues: '1294636361067790386',
+            corpo: '1294636131635171429',
+        };
+
+        const embed = new EmbedBuilder()
+            .setColor(0x3498db)
+            .setTitle(`Bienvenue sur ${member.guild.name} !`)
+            .setDescription(
+                `${member.user}, bienvenue sur le serveur ! Merci de sélectionner votre rôle dans la liste ci-dessous :\n\n` +
+                "1️⃣ **Nomade** : Voyageurs, toujours en mouvement.\n" +
+                "2️⃣ **Gosse des Rues** : Malins et débrouillards.\n" +
+                "3️⃣ **Corpo** : Stratèges du monde des entreprises.\n\n" +
+                "Choisissez avec soin !"
+            );
+
+        const roleMenu = new StringSelectMenuBuilder()
+            .setCustomId('selection_role')
+            .setPlaceholder('Sélectionnez votre rôle...')
+            .addOptions([
+                {
+                    label: 'Nomade',
+                    description: 'Voyageurs, toujours en mouvement.',
+                    value: 'nomade',
+                    emoji: '🟤',
+                },
+                {
+                    label: 'Gosse des Rues',
+                    description: 'Malins et débrouillards.',
+                    value: 'gosse_des_rues',
+                    emoji: '🟠',
+                },
+                {
+                    label: 'Corpo',
+                    description: 'Stratèges du monde des entreprises.',
+                    value: 'corpo',
+                    emoji: '🟢',
+                },
+            ]);
+
+        const row = new ActionRowBuilder().addComponents(roleMenu);
+
+        const welcomeChannelId = '1307403399607877673';
+        const welcomeChannel = member.guild.channels.cache.get(welcomeChannelId);
+
+        if (welcomeChannel?.isTextBased()) {
+            await welcomeChannel.send({
+                embeds: [embed],
+                components: [row],
+            });
+        }
+    } catch (error) {
+        console.error('Erreur dans guildMemberAdd:', error);
+    }
+});
 
 client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
 
-    await filterBlacklistedWords(message);
-    await detectAndHandleSpam(message);
+    try {
+        await filterBlacklistedWords(message);
+        await detectAndHandleSpam(message);
 
-    const photoOnlyChannelIDs = ['1307120616108724275', '1294651685817290763'];
+        const photoOnlyChannelIDs = ['1307120616108724275', '1294651685817290763'];
 
-    if (photoOnlyChannelIDs.includes(message.channel.id)) {
-        if (message.hasThread) return;
-        if (message.attachments.size > 0) {
-            const isMedia = message.attachments.every(attachment => {
-                const fileType = attachment.contentType || '';
-                return fileType.startsWith('image/') || fileType.startsWith('video/');
-            });
-            if (isMedia) return;
-        }
-        await message.delete().catch(console.error);
-        message.author.send(
-            `🚫 Seules les photos ou vidéos sont autorisées dans le canal **${message.channel.name}**. Les messages texte doivent être envoyés dans un fil.`
-        ).catch(console.error);
-    }
-
-    if (message.content.startsWith('+')) {
-        const args = message.content.slice(1).trim().split(/ +/);
-        const command = args.shift().toLowerCase();
-        await handleCommand(command, message, args, deletedMessages);
-    }
-});
-
-client.on('guildMemberAdd', async (member) => {
-    await enforceAccountAgeRestriction(member);
-    await detectAndHandleMassJoins(member);
-
-    const roles = {
-        "nomade": "1294636303744499733",
-        "gosse_des_rues": "1294636361067790386",
-        "corpo": "1294636131635171429"
-    };
-
-    const embed = new EmbedBuilder()
-        .setColor(0x3498db)
-        .setTitle(`Bienvenue sur ${member.guild.name} !`)
-        .setDescription(
-            `${member.user}, bienvenue sur le serveur ! Merci de sélectionner votre rôle dans la liste ci-dessous :\n\n` +
-            "1️⃣ **Nomade** : Voyageurs, toujours en mouvement.\n" +
-            "2️⃣ **Gosse des Rues** : Malins et débrouillards.\n" +
-            "3️⃣ **Corpo** : Stratèges du monde des entreprises.\n\n" +
-            "Choisissez avec soin !"
-        );
-
-    const roleMenu = new StringSelectMenuBuilder()
-        .setCustomId('selection_role')
-        .setPlaceholder('Sélectionnez votre rôle...')
-        .addOptions([
-            {
-                label: 'Nomade',
-                description: 'Voyageurs, toujours en mouvement.',
-                value: 'nomade',
-                emoji: '🟤'
-            },
-            {
-                label: 'Gosse des Rues',
-                description: 'Malins et débrouillards.',
-                value: 'gosse_des_rues',
-                emoji: '🟠'
-            },
-            {
-                label: 'Corpo',
-                description: 'Stratèges du monde des entreprises.',
-                value: 'corpo',
-                emoji: '🟢'
+        if (photoOnlyChannelIDs.includes(message.channel.id)) {
+            if (botPermissions.has(message.author.id)) return;
+            if (message.hasThread) return;
+            if (message.attachments.size > 0) {
+                const isMedia = message.attachments.every((attachment) => {
+                    const fileType = attachment.contentType || '';
+                    return fileType.startsWith('image/') || fileType.startsWith('video/');
+                });
+                if (isMedia) return;
             }
-        ]);
+            await message.delete().catch(console.error);
+            message.author.send(
+                `🚫 Seules les photos ou vidéos sont autorisées dans le canal **${message.channel.name}**. Les messages texte doivent être envoyés dans un fil.`
+            ).catch(console.error);
+        }
 
-    const row = new ActionRowBuilder().addComponents(roleMenu);
-
-    const welcomeChannelId = '1307403399607877673';
-    const welcomeChannel = member.guild.channels.cache.get(welcomeChannelId);
-
-    if (welcomeChannel && welcomeChannel.isTextBased()) {
-        try {
-            await welcomeChannel.send({
-                embeds: [embed],
-                components: [row]
-            });
-        } catch (error) {}
+        if (message.content.startsWith('+')) {
+            const args = message.content.slice(1).trim().split(/ +/);
+            const command = args.shift().toLowerCase();
+            await handleCommand(command, message, args, deletedMessages);
+        }
+    } catch (error) {
+        console.error('Erreur dans messageCreate:', error);
     }
 });
 
 client.on('interactionCreate', async (interaction) => {
     if (!interaction.isStringSelectMenu()) return;
 
-    if (interaction.customId === 'selection_role') {
-        const selectedRole = interaction.values[0];
-        const roles = {
-            "nomade": { id: "1294636303744499733", color: "8b4513" },
-            "gosse_des_rues": { id: "1294636361067790386", color: "ff5733" },
-            "corpo": { id: "1294636131635171429", color: "3cb371" }
-        };
+    try {
+        if (interaction.customId === 'selection_role') {
+            const selectedRole = interaction.values[0];
+            const roles = {
+                nomade: { id: '1294636303744499733', color: '8b4513' },
+                gosse_des_rues: { id: '1294636361067790386', color: 'ff5733' },
+                corpo: { id: '1294636131635171429', color: '3cb371' },
+            };
 
-        const roleDetails = roles[selectedRole];
-        const afterlifeChannelID = '1294632351103582258';
+            const roleDetails = roles[selectedRole];
+            const afterlifeChannelID = '1294632351103582258';
 
-        if (!roleDetails) {
-            return interaction.reply({
-                content: "Désolé, une erreur s'est produite lors de l'attribution de votre rôle.",
-                ephemeral: true
-            });
-        }
+            if (!roleDetails) {
+                return interaction.reply({
+                    content: "Désolé, une erreur s'est produite lors de l'attribution de votre rôle.",
+                    ephemeral: true,
+                });
+            }
 
-        try {
             const role = interaction.guild.roles.cache.get(roleDetails.id);
             if (role) {
                 await interaction.member.roles.add(role);
@@ -160,7 +193,7 @@ client.on('interactionCreate', async (interaction) => {
                 }
 
                 const welcomeChannel = interaction.guild.channels.cache.get('1307403399607877673');
-                if (welcomeChannel && welcomeChannel.isTextBased()) {
+                if (welcomeChannel?.isTextBased()) {
                     const dropdownMessage = await welcomeChannel.messages.fetch(interaction.message.id);
                     if (dropdownMessage) {
                         await dropdownMessage.delete();
@@ -168,7 +201,7 @@ client.on('interactionCreate', async (interaction) => {
                 }
 
                 const afterlifeChannel = interaction.guild.channels.cache.get(afterlifeChannelID);
-                if (afterlifeChannel && afterlifeChannel.isTextBased()) {
+                if (afterlifeChannel?.isTextBased()) {
                     const embed = new EmbedBuilder()
                         .setColor(`#${roleDetails.color}`)
                         .setDescription(
@@ -179,20 +212,23 @@ client.on('interactionCreate', async (interaction) => {
 
                 await interaction.reply({
                     content: `🎉 Vous avez reçu le rôle **${role.name}** ! Cliquez ici pour accéder au canal **Afterlife** : <#${afterlifeChannelID}>.`,
-                    ephemeral: true
+                    ephemeral: true,
                 });
             } else {
                 await interaction.reply({
                     content: "Désolé, le rôle sélectionné est introuvable.",
-                    ephemeral: true
+                    ephemeral: true,
                 });
             }
-        } catch (error) {}
+        }
+    } catch (error) {
+        console.error('Erreur dans interactionCreate:', error);
     }
 });
 
 client.on('messageDelete', (message) => {
     if (message.partial || !message.guild || message.author.bot) return;
+
     deletedMessages.set(message.channel.id, {
         content: message.content,
         author: message.author.tag,
