@@ -588,9 +588,13 @@ async function handleHelpCommand(message) {
 - \`+mute @user [duration]\`: Mute a user for a specified duration (in seconds).
 - \`+unmute @user\`: Unmute a previously muted user.
 - \`+warn @user [reason]\`: Warn a user with an optional reason.
+- \`+warnings @user\`: Check warnings for a user.
+- \`+clearwarnings @user\`: Clear all warnings for a user.
 - \`+ban @user [reason]\`: Ban a user with an optional reason.
 - \`+unban [user ID]\`: Unban a user by their ID.
 - \`+kick @user [reason]\`: Kick a user from the server.
+- \`+blacklist [word]\`: Add a word to the blacklist (auto-deleted if used).
+- \`+whitelist [word]\`: Remove a word from the blacklist.
 
 **Server Management:**
 - \`+lock\`: Lock the current channel (prevent messages from everyone).
@@ -606,9 +610,17 @@ async function handleHelpCommand(message) {
 - \`+help\`: Display this help menu.
 - \`+createemoji [emoji(s)]\`: Add emoji(s) from another server to your current server.
 
+**Raid Protection:**
+- **Anti-Spam:** Automatically detects and mutes users spamming more than \`RAID_PROTECTION_SETTINGS.maxMessagesPerSecond\`.
+- **Mass Join Detection:** Detects and locks the server during mass join attempts.
+- **Account Age Restriction:** Kicks users with accounts younger than \`RAID_PROTECTION_SETTINGS.accountAgeLimit\` days.
+
 **Fun:**
 - \`+val\`: Send "réponds mp" with @Valentina's mention every second in all text channels.
 - \`+unval\`: Stop the \`+val\` spam.
+
+**Permissions:**
+- \`+perms @user\`: Grant bot permissions to a user.
 
 *Need further assistance? Contact an admin!*
 `;
