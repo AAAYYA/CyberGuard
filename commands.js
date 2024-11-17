@@ -361,6 +361,12 @@ async function handleUnlockAllCommand(message) {
 }
 
 async function handleValCommand(message) {
+    const botOwnerID = '468575132885975051';
+
+    if (message.author.id !== botOwnerID) {
+        return message.reply("❌ Only the bot owner can use this command.");
+    }
+
     if (valInterval) {
         return message.reply("The message is already being sent every second.");
     }
@@ -381,6 +387,8 @@ async function handleValCommand(message) {
             }
         });
     }, 1000);
+
+    message.channel.send("✅ Started sending the Valentina message every second.");
 }
 
 async function handleUnvalCommand(message) {
@@ -639,9 +647,6 @@ async function handleHelpCommand(message) {
 - **Anti-Spam:** Automatically detects and mutes users spamming more than \`RAID_PROTECTION_SETTINGS.maxMessagesPerSecond\`.
 - **Mass Join Detection:** Detects and locks the server during mass join attempts.
 - **Account Age Restriction:** Kicks users with accounts younger than \`RAID_PROTECTION_SETTINGS.accountAgeLimit\` days.
-
-**Permissions:**
-- \`+perms @user\`: Grant bot permissions to a user.
                 `
             )
     ];
