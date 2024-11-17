@@ -70,7 +70,7 @@ async function handleCommand(command, message, args, deletedMessages) {
         case 'unlock':
             await handleUnlockCommand(message);
             break;
-        case 'lockdown':
+        case 'lockall':
             await handleLockdownCommand(message);
             break;
         case 'unlockall':
@@ -647,7 +647,7 @@ async function handleHelpCommand(message) {
 **Server Management:**
 - \`+lock\`: Lock the current channel (prevent messages from everyone).
 - \`+unlock\`: Unlock the current channel (allow messages again).
-- \`+lockdown\`: Lock all text channels on the server.
+- \`+lockall\`: Lock all text channels on the server.
 - \`+unlockall\`: Unlock all text channels on the server.
 - \`+renew\`: Recreate the current channel (deletes and recreates it with the same settings).
 - \`+clear [number]\`: Delete the specified number of recent messages.
