@@ -1,18 +1,18 @@
 require('dotenv').config();
 global.ReadableStream = global.ReadableStream || require('stream/web').ReadableStream;
-const { 
-    Client, 
-    GatewayIntentBits, 
-    ActionRowBuilder, 
-    StringSelectMenuBuilder, 
-    EmbedBuilder 
+const {
+    Client,
+    GatewayIntentBits,
+    ActionRowBuilder,
+    StringSelectMenuBuilder,
+    EmbedBuilder
 } = require('discord.js');
-const { 
-    handleCommand, 
-    filterBlacklistedWords, 
-    detectAndHandleSpam, 
-    detectAndHandleMassJoins, 
-    enforceAccountAgeRestriction 
+const {
+    handleCommand,
+    filterBlacklistedWords,
+    detectAndHandleSpam,
+    detectAndHandleMassJoins,
+    enforceAccountAgeRestriction
 } = require('./commands.js');
 const express = require('express');
 
@@ -20,13 +20,13 @@ const deletedMessages = new Map();
 
 const app = express();
 app.get('/', (req, res) => {
-    res.send('Bot is running!');
+    res.send('Bot en cours d\'exécution !');
 });
 app.listen(3000, () => {
-    console.log('HTTP server running on port 3000');
+    console.log('Serveur HTTP actif sur le port 3000');
 });
 
-const client = new Client({ 
+const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
@@ -39,14 +39,13 @@ const client = new Client({
 client.login(process.env.BOT_TOKEN);
 
 client.once('ready', () => {
-    console.log(`Logged in as ${client.user.tag}!`);
+    console.log(`Connecté en tant que ${client.user.tag} !`);
 });
 
 client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
 
     await filterBlacklistedWords(message);
-
     await detectAndHandleSpam(message);
 
     if (message.content.startsWith('+')) {
@@ -69,33 +68,36 @@ client.on('guildMemberAdd', async (member) => {
 
     const embed = new EmbedBuilder()
         .setColor(0x3498db)
-        .setTitle(`Welcome to ${member.guild.name}!`)
+        .setTitle(`Bienvenue sur ${member.guild.name} !`)
         .setDescription(
-            `${member.user}, welcome to the server! Please select your role from the dropdown below:\n\n` +
-            "1️⃣ **Nomade**: Wanderers, always on the move.\n" +
-            "2️⃣ **Gosse des Rues**: Street-smart and resourceful.\n" +
-            "3️⃣ **Corpo**: Corporate masterminds.\n\n" +
-            "Choose carefully!"
+            `${member.user}, bienvenue sur le serveur ! Merci de sélectionner votre rôle dans la liste ci-dessous :\n\n` +
+            "1️⃣ **Nomade** : Voyageurs, toujours en mouvement.\n" +
+            "2️⃣ **Gosse des Rues** : Malins et débrouillards.\n" +
+            "3️⃣ **Corpo** : Stratèges du monde des entreprises.\n\n" +
+            "Choisissez avec soin !"
         );
 
     const roleMenu = new StringSelectMenuBuilder()
-        .setCustomId('role_selection')
-        .setPlaceholder('Select your role...')
+        .setCustomId('selection_role')
+        .setPlaceholder('Sélectionnez votre rôle...')
         .addOptions([
             {
                 label: 'Nomade',
-                description: 'Wanderers, always on the move.',
-                value: 'nomade'
+                description: 'Voyageurs, toujours en mouvement.',
+                value: 'nomade',
+                emoji: '🟤'
             },
             {
                 label: 'Gosse des Rues',
-                description: 'Street-smart and resourceful.',
-                value: 'gosse_des_rues'
+                description: 'Malins et débrouillards.',
+                value: 'gosse_des_rues',
+                emoji: '🟠'
             },
             {
                 label: 'Corpo',
-                description: 'Corporate masterminds.',
-                value: 'corpo'
+                description: 'Stratèges du monde des entreprises.',
+                value: 'corpo',
+                emoji: '🟢'
             }
         ]);
 
@@ -106,54 +108,49 @@ client.on('guildMemberAdd', async (member) => {
 
     if (welcomeChannel && welcomeChannel.isTextBased()) {
         try {
-            const message = await welcomeChannel.send({
+            await welcomeChannel.send({
                 embeds: [embed],
                 components: [row]
             });
-
-            // Save the message ID for reference
-            member.dropdownMessageId = message.id;
         } catch (error) {
-            console.error('Could not send role selection menu:', error);
+            console.error('Impossible d\'envoyer le menu de sélection des rôles :', error);
         }
     } else {
-        console.error('Welcome channel not found or is not text-based.');
+        console.error('Le canal de bienvenue est introuvable ou non textuel.');
     }
 });
 
 client.on('interactionCreate', async (interaction) => {
     if (!interaction.isStringSelectMenu()) return;
 
-    if (interaction.customId === 'role_selection') {
+    if (interaction.customId === 'selection_role') {
         const selectedRole = interaction.values[0];
         const roles = {
-            "nomade": "1294636303744499733",
-            "gosse_des_rues": "1294636361067790386",
-            "corpo": "1294636131635171429"
+            "nomade": { id: "1294636303744499733", color: "8b4513" }, // Brown
+            "gosse_des_rues": { id: "1294636361067790386", color: "ff5733" }, // Orange
+            "corpo": { id: "1294636131635171429", color: "3cb371" } // Green
         };
 
-        const roleId = roles[selectedRole];
+        const roleDetails = roles[selectedRole];
+        const afterlifeChannelID = '1294632351103582258';
 
-        if (!roleId) {
+        if (!roleDetails) {
             return interaction.reply({
-                content: "Sorry, an error occurred while assigning your role.",
+                content: "Désolé, une erreur s'est produite lors de l'attribution de votre rôle.",
                 ephemeral: true
             });
         }
 
         try {
-            const role = interaction.guild.roles.cache.get(roleId);
+            const role = interaction.guild.roles.cache.get(roleDetails.id);
             if (role) {
-                // Assign the selected role
                 await interaction.member.roles.add(role);
 
-                // Remove the initial role (1307408129285423104)
                 const initialRole = interaction.guild.roles.cache.get('1307408129285423104');
                 if (initialRole) {
                     await interaction.member.roles.remove(initialRole);
                 }
 
-                // Delete the dropdown message
                 const welcomeChannel = interaction.guild.channels.cache.get('1307403399607877673');
                 if (welcomeChannel && welcomeChannel.isTextBased()) {
                     const dropdownMessage = await welcomeChannel.messages.fetch(interaction.message.id);
@@ -162,20 +159,32 @@ client.on('interactionCreate', async (interaction) => {
                     }
                 }
 
+                const afterlifeChannel = interaction.guild.channels.cache.get(afterlifeChannelID);
+                if (afterlifeChannel && afterlifeChannel.isTextBased()) {
+                    const embed = new EmbedBuilder()
+                        .setColor(`#${roleDetails.color}`)
+                        .setDescription(
+                            `🎉 Bienvenue à **Night City**, ${interaction.member} ! Vous avez choisi le rôle **${role.name}**. Profitez de votre séjour !`
+                        );
+                    await afterlifeChannel.send({ embeds: [embed] });
+                } else {
+                    console.error("Le canal Afterlife est introuvable ou non textuel.");
+                }
+
                 await interaction.reply({
-                    content: `🎉 You have been assigned the **${role.name}** role!`,
+                    content: `🎉 Vous avez reçu le rôle **${role.name}** ! Cliquez ici pour accéder au canal **Afterlife** : <#${afterlifeChannelID}>.`,
                     ephemeral: true
                 });
             } else {
                 await interaction.reply({
-                    content: "Sorry, the selected role could not be found.",
+                    content: "Désolé, le rôle sélectionné est introuvable.",
                     ephemeral: true
                 });
             }
         } catch (error) {
-            console.error('Error assigning role or deleting message:', error);
+            console.error('Erreur lors de l\'attribution du rôle ou de la redirection :', error);
             await interaction.reply({
-                content: "An error occurred while assigning your role. Please contact an admin.",
+                content: "Une erreur s'est produite lors de l'attribution de votre rôle. Veuillez contacter un administrateur.",
                 ephemeral: true
             });
         }
