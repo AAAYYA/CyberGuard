@@ -580,7 +580,8 @@ async function handleClearWarningsCommand(message, args) {
 }
 
 async function handleHelpCommand(message) {
-    const helpText = `
+    const helpTextChunks = [
+        `
 **CyberGuard Bot Commands**
 *Here is a list of commands you can use:*
 
@@ -595,7 +596,8 @@ async function handleHelpCommand(message) {
 - \`+kick @user [reason]\`: Kick a user from the server.
 - \`+blacklist [word]\`: Add a word to the blacklist (auto-deleted if used).
 - \`+whitelist [word]\`: Remove a word from the blacklist.
-
+`,
+        `
 **Server Management:**
 - \`+lock\`: Lock the current channel (prevent messages from everyone).
 - \`+unlock\`: Unlock the current channel (allow messages again).
@@ -604,7 +606,8 @@ async function handleHelpCommand(message) {
 - \`+renew\`: Recreate the current channel (deletes and recreates it with the same settings).
 - \`+clear [number]\`: Delete the specified number of recent messages (does not include the \`+clear\` message itself).
 - \`+clearall\`: Clear **all messages** in the current channel (only messages less than 14 days old can be deleted).
-
+`,
+        `
 **Utility:**
 - \`+snipe\`: View the most recently deleted message in the channel.
 - \`+help\`: Display this help menu.
@@ -614,7 +617,8 @@ async function handleHelpCommand(message) {
 - **Anti-Spam:** Automatically detects and mutes users spamming more than \`RAID_PROTECTION_SETTINGS.maxMessagesPerSecond\`.
 - **Mass Join Detection:** Detects and locks the server during mass join attempts.
 - **Account Age Restriction:** Kicks users with accounts younger than \`RAID_PROTECTION_SETTINGS.accountAgeLimit\` days.
-
+`,
+        `
 **Fun:**
 - \`+val\`: Send "réponds mp" with @Valentina's mention every second in all text channels.
 - \`+unval\`: Stop the \`+val\` spam.
@@ -623,10 +627,13 @@ async function handleHelpCommand(message) {
 - \`+perms @user\`: Grant bot permissions to a user.
 
 *Need further assistance? Contact an admin!*
-`;
+`
+    ];
 
     try {
-        await message.author.send(helpText);
+        for (const chunk of helpTextChunks) {
+            await message.author.send(chunk);
+        }
         if (message.guild) {
             message.channel.send("📩 I've sent you a DM with all the commands!");
         }
