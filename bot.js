@@ -22,9 +22,7 @@ const app = express();
 app.get('/', (req, res) => {
     res.send('Bot en cours d\'exécution !');
 });
-app.listen(3000, () => {
-    console.log('Serveur HTTP actif sur le port 3000');
-});
+app.listen(3000, () => {});
 
 const client = new Client({
     intents: [
@@ -38,9 +36,7 @@ const client = new Client({
 
 client.login(process.env.BOT_TOKEN);
 
-client.once('ready', () => {
-    console.log(`Connecté en tant que ${client.user.tag} !`);
-});
+client.once('ready', () => {});
 
 client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
@@ -48,10 +44,26 @@ client.on('messageCreate', async (message) => {
     await filterBlacklistedWords(message);
     await detectAndHandleSpam(message);
 
+    const photoOnlyChannelIDs = ['1307120616108724275', '1294651685817290763'];
+
+    if (photoOnlyChannelIDs.includes(message.channel.id)) {
+        if (message.hasThread) return;
+        if (message.attachments.size > 0) {
+            const isMedia = message.attachments.every(attachment => {
+                const fileType = attachment.contentType || '';
+                return fileType.startsWith('image/') || fileType.startsWith('video/');
+            });
+            if (isMedia) return;
+        }
+        await message.delete().catch(console.error);
+        message.author.send(
+            `🚫 Seules les photos ou vidéos sont autorisées dans le canal **${message.channel.name}**. Les messages texte doivent être envoyés dans un fil.`
+        ).catch(console.error);
+    }
+
     if (message.content.startsWith('+')) {
         const args = message.content.slice(1).trim().split(/ +/);
         const command = args.shift().toLowerCase();
-
         await handleCommand(command, message, args, deletedMessages);
     }
 });
@@ -112,11 +124,7 @@ client.on('guildMemberAdd', async (member) => {
                 embeds: [embed],
                 components: [row]
             });
-        } catch (error) {
-            console.error('Impossible d\'envoyer le menu de sélection des rôles :', error);
-        }
-    } else {
-        console.error('Le canal de bienvenue est introuvable ou non textuel.');
+        } catch (error) {}
     }
 });
 
@@ -126,9 +134,9 @@ client.on('interactionCreate', async (interaction) => {
     if (interaction.customId === 'selection_role') {
         const selectedRole = interaction.values[0];
         const roles = {
-            "nomade": { id: "1294636303744499733", color: "8b4513" }, // Brown
-            "gosse_des_rues": { id: "1294636361067790386", color: "ff5733" }, // Orange
-            "corpo": { id: "1294636131635171429", color: "3cb371" } // Green
+            "nomade": { id: "1294636303744499733", color: "8b4513" },
+            "gosse_des_rues": { id: "1294636361067790386", color: "ff5733" },
+            "corpo": { id: "1294636131635171429", color: "3cb371" }
         };
 
         const roleDetails = roles[selectedRole];
@@ -167,8 +175,6 @@ client.on('interactionCreate', async (interaction) => {
                             `🎉 Bienvenue à **Night City**, ${interaction.member} ! Vous avez choisi le rôle **${role.name}**. Profitez de votre séjour !`
                         );
                     await afterlifeChannel.send({ embeds: [embed] });
-                } else {
-                    console.error("Le canal Afterlife est introuvable ou non textuel.");
                 }
 
                 await interaction.reply({
@@ -181,13 +187,7 @@ client.on('interactionCreate', async (interaction) => {
                     ephemeral: true
                 });
             }
-        } catch (error) {
-            console.error('Erreur lors de l\'attribution du rôle ou de la redirection :', error);
-            await interaction.reply({
-                content: "Une erreur s'est produite lors de l'attribution de votre rôle. Veuillez contacter un administrateur.",
-                ephemeral: true
-            });
-        }
+        } catch (error) {}
     }
 });
 
