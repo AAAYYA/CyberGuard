@@ -1,4 +1,5 @@
 const { PermissionsBitField, ChannelType } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const fs = require('fs');
 
 const raidProtectionState = {
@@ -580,11 +581,12 @@ async function handleClearWarningsCommand(message, args) {
 }
 
 async function handleHelpCommand(message) {
-    const helpTextChunks = [
-        `
-**CyberGuard Bot Commands**
-*Here is a list of commands you can use:*
-
+    const pages = [
+        new EmbedBuilder()
+            .setColor('#3498db')
+            .setTitle('CyberGuard Bot Commands - Moderation')
+            .setDescription(
+                `
 **Moderation:**
 - \`+mute @user [duration]\`: Mute a user for a specified duration (in seconds).
 - \`+unmute @user\`: Unmute a previously muted user.
@@ -596,51 +598,99 @@ async function handleHelpCommand(message) {
 - \`+kick @user [reason]\`: Kick a user from the server.
 - \`+blacklist [word]\`: Add a word to the blacklist (auto-deleted if used).
 - \`+whitelist [word]\`: Remove a word from the blacklist.
-`,
-        `
+                `
+            ),
+        new EmbedBuilder()
+            .setColor('#3498db')
+            .setTitle('CyberGuard Bot Commands - Server Management')
+            .setDescription(
+                `
 **Server Management:**
 - \`+lock\`: Lock the current channel (prevent messages from everyone).
 - \`+unlock\`: Unlock the current channel (allow messages again).
 - \`+lockdown\`: Lock all text channels on the server.
 - \`+unlockall\`: Unlock all text channels on the server.
 - \`+renew\`: Recreate the current channel (deletes and recreates it with the same settings).
-- \`+clear [number]\`: Delete the specified number of recent messages (does not include the \`+clear\` message itself).
-- \`+clearall\`: Clear **all messages** in the current channel (only messages less than 14 days old can be deleted).
-`,
-        `
+- \`+clear [number]\`: Delete the specified number of recent messages.
+- \`+clearall\`: Clear **all messages** in the current channel.
+                `
+            ),
+        new EmbedBuilder()
+            .setColor('#3498db')
+            .setTitle('CyberGuard Bot Commands - Utility & Fun')
+            .setDescription(
+                `
 **Utility:**
 - \`+snipe\`: View the most recently deleted message in the channel.
 - \`+help\`: Display this help menu.
 - \`+createemoji [emoji(s)]\`: Add emoji(s) from another server to your current server.
 
+**Fun:**
+- \`+val\`: Send "réponds mp" with @Valentina's mention every second in all text channels.
+- \`+unval\`: Stop the \`+val\` spam.
+                `
+            ),
+        new EmbedBuilder()
+            .setColor('#3498db')
+            .setTitle('CyberGuard Bot Commands - Raid Protection')
+            .setDescription(
+                `
 **Raid Protection:**
 - **Anti-Spam:** Automatically detects and mutes users spamming more than \`RAID_PROTECTION_SETTINGS.maxMessagesPerSecond\`.
 - **Mass Join Detection:** Detects and locks the server during mass join attempts.
 - **Account Age Restriction:** Kicks users with accounts younger than \`RAID_PROTECTION_SETTINGS.accountAgeLimit\` days.
-`,
-        `
-**Fun:**
-- \`+val\`: Send "réponds mp" with @Valentina's mention every second in all text channels.
-- \`+unval\`: Stop the \`+val\` spam.
 
 **Permissions:**
 - \`+perms @user\`: Grant bot permissions to a user.
-
-*Need further assistance? Contact an admin!*
-`
+                `
+            )
     ];
 
-    try {
-        for (const chunk of helpTextChunks) {
-            await message.author.send(chunk);
+    let currentPage = 0;
+
+    const buttons = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+            .setCustomId('prev')
+            .setLabel('⬅️ Previous')
+            .setStyle(ButtonStyle.Primary)
+            .setDisabled(true),
+        new ButtonBuilder()
+            .setCustomId('next')
+            .setLabel('➡️ Next')
+            .setStyle(ButtonStyle.Primary)
+    );
+
+    const messageComponent = await message.channel.send({
+        embeds: [pages[currentPage]],
+        components: [buttons]
+    });
+
+    const collector = message.channel.createMessageComponentCollector({
+        filter: (i) => i.user.id === message.author.id,
+        time: 60000
+    });
+
+    collector.on('collect', async (interaction) => {
+        if (interaction.customId === 'prev') {
+            currentPage = Math.max(currentPage - 1, 0);
+        } else if (interaction.customId === 'next') {
+            currentPage = Math.min(currentPage + 1, pages.length - 1);
         }
-        if (message.guild) {
-            message.channel.send("📩 I've sent you a DM with all the commands!");
-        }
-    } catch (error) {
-        console.error(error);
-        message.channel.send("❌ I couldn't send you a DM. Please check your DM settings and try again.");
-    }
+
+        buttons.components[0].setDisabled(currentPage === 0);
+        buttons.components[1].setDisabled(currentPage === pages.length - 1);
+
+        await interaction.update({
+            embeds: [pages[currentPage]],
+            components: [buttons]
+        });
+    });
+
+    collector.on('end', () => {
+        buttons.components[0].setDisabled(true);
+        buttons.components[1].setDisabled(true);
+        messageComponent.edit({ components: [buttons] });
+    });
 }
 
 async function handleCreateEmojiCommand(message) {
