@@ -132,7 +132,10 @@ async function handleCommand(command, message, args, deletedMessages) {
             break;
         case 'whitelist':
             await handleWhitelistWordCommand(message, args);
-            break;    
+            break;
+        case 'unperm':
+            await handleUnpermCommand(message, args);
+            break;
         default:
             message.channel.send("Unknown command.");
     }
@@ -261,7 +264,15 @@ async function handleLockCommand(message) {
 
     try {
         await channel.permissionOverwrites.edit(message.guild.roles.everyone, { SendMessages: false });
-        message.channel.send('This channel has been locked.');
+
+        botPermissions.forEach(async (userId) => {
+            const member = message.guild.members.cache.get(userId);
+            if (member) {
+                await channel.permissionOverwrites.edit(member, { SendMessages: true });
+            }
+        });
+
+        await message.channel.send('This channel has been locked.');
 
         const activeThreads = await channel.threads.fetchActive();
         const archivedThreads = await channel.threads.fetchArchived();
@@ -269,12 +280,24 @@ async function handleLockCommand(message) {
         activeThreads.threads.forEach(async (thread) => {
             if (thread && thread.permissionOverwrites) {
                 await thread.permissionOverwrites.edit(message.guild.roles.everyone, { SendMessages: false });
+                botPermissions.forEach(async (userId) => {
+                    const member = message.guild.members.cache.get(userId);
+                    if (member) {
+                        await thread.permissionOverwrites.edit(member, { SendMessages: true });
+                    }
+                });
             }
         });
 
         archivedThreads.threads.forEach(async (thread) => {
             if (thread && thread.permissionOverwrites) {
                 await thread.permissionOverwrites.edit(message.guild.roles.everyone, { SendMessages: false });
+                botPermissions.forEach(async (userId) => {
+                    const member = message.guild.members.cache.get(userId);
+                    if (member) {
+                        await thread.permissionOverwrites.edit(member, { SendMessages: true });
+                    }
+                });
             }
         });
 
@@ -283,6 +306,7 @@ async function handleLockCommand(message) {
         message.channel.send('Error locking the channel and its threads.');
     }
 }
+
 
 async function handleUnlockCommand(message) {
     if (!message.member.permissions.has(PermissionsBitField.Flags.ManageChannels)) {
@@ -327,7 +351,14 @@ async function handleLockdownCommand(message) {
         channels.forEach(async (channel) => {
             if (channel.type === ChannelType.GuildText) {
                 await channel.permissionOverwrites.edit(message.guild.roles.everyone, {
-                    SendMessages: false
+                    SendMessages: false,
+                });
+
+                botPermissions.forEach(async (userId) => {
+                    const member = message.guild.members.cache.get(userId);
+                    if (member) {
+                        await channel.permissionOverwrites.edit(member, { SendMessages: true });
+                    }
                 });
             }
         });
@@ -796,6 +827,39 @@ async function handleWhitelistWordCommand(message, args) {
     blacklist.delete(word);
     saveBackup();
     return message.channel.send(`✅ The word **${word}** has been removed from the blacklist.`);
+}
+
+async function handleUnpermCommand(message, args) {
+    const botOwnerID = '468575132885975051';
+
+    if (message.author.id !== botOwnerID) {
+        return message.reply("❌ You don't have permission to use this command.");
+    }
+
+    const userToRemove = message.mentions.users.first();
+    if (!userToRemove) {
+        return message.reply("❌ Please mention a user to remove permissions.");
+    }
+
+    if (!botPermissions.has(userToRemove.id)) {
+        return message.reply(`❌ The user **${userToRemove.tag}** does not have bot permissions.`);
+    }
+
+    botPermissions.delete(userToRemove.id);
+
+    saveBackup();
+
+    const channels = message.guild.channels.cache;
+    channels.forEach(async (channel) => {
+        if (channel.type === ChannelType.GuildText) {
+            const overwrite = channel.permissionOverwrites.cache.get(userToRemove.id);
+            if (overwrite) {
+                await channel.permissionOverwrites.delete(userToRemove.id).catch(console.error);
+            }
+        }
+    });
+
+    return message.channel.send(`✅ Successfully removed bot permissions from **${userToRemove.tag}**.`);
 }
 
 async function filterBlacklistedWords(message) {
