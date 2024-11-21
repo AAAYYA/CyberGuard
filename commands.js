@@ -429,6 +429,22 @@ async function handleUnvalCommand(message) {
 
     clearInterval(valInterval);
     valInterval = null;
+
+    try {
+        const channels = message.guild.channels.cache.filter(channel => channel.type === ChannelType.GuildText);
+
+        for (const [channelId, channel] of channels) {
+            const messages = await channel.messages.fetch({ limit: 100 });
+            const botMessages = messages.filter(msg => msg.author.bot && msg.content.includes("réponds mp"));
+
+            for (const botMessage of botMessages) {
+                await botMessage.delete().catch(console.error);
+            }
+        }
+    } catch (error) {
+        console.error("Error while deleting bot messages:", error);
+        message.channel.send("❌ Stopped the spam but encountered an error while cleaning up the messages.");
+    }
 }
 
 async function handleMuteCommand(message, args) {
