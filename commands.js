@@ -418,8 +418,6 @@ async function handleValCommand(message) {
             }
         });
     }, 1000);
-
-    message.channel.send("✅ Started sending the Valentina message every second.");
 }
 
 async function handleUnvalCommand(message) {
@@ -431,21 +429,32 @@ async function handleUnvalCommand(message) {
     valInterval = null;
 
     try {
-        const channels = message.guild.channels.cache.filter(channel => channel.type === ChannelType.GuildText);
+        const channels = message.guild.channels.cache.filter(
+            (channel) => channel.type === ChannelType.GuildText
+        );
 
         for (const [channelId, channel] of channels) {
-            const messages = await channel.messages.fetch({ limit: 100 });
-            const botMessages = messages.filter(msg => msg.author.bot && msg.content.includes("réponds mp"));
+            try {
+                const messages = await channel.messages.fetch({ limit: 100 });
+                const botMessages = messages.filter(
+                    (msg) =>
+                        msg.author.bot &&
+                        msg.content.includes("réponds mp")
+                );
 
-            for (const botMessage of botMessages) {
-                await botMessage.delete().catch(console.error);
+                for (const [messageId, botMessage] of botMessages) {
+                    await botMessage.delete().catch(console.error);
+                }
+            } catch (channelError) {
+                console.error(`Error while deleting messages in channel ${channel.name}:`, channelError);
             }
         }
     } catch (error) {
-        console.error("Error while deleting bot messages:", error);
+        console.error("Error while cleaning up bot messages:", error);
         message.channel.send("❌ Stopped the spam but encountered an error while cleaning up the messages.");
     }
 }
+
 
 async function handleMuteCommand(message, args) {
     if (!message.member.permissions.has(PermissionsBitField.Flags.ModerateMembers)) {
