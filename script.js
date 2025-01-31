@@ -38,11 +38,16 @@ function displayMessage(message) {
 }
 
 function sendMessage() {
-    const channelId = document.getElementById('channel-id').value;
+    const channelId = document.getElementById('channel-selector').value;
     const message = document.getElementById('message-input').value;
 
-    if (!channelId || !message) {
-        alert("Please enter a channel ID and a message.");
+    if (!channelId) {
+        alert("Please select a channel.");
+        return;
+    }
+
+    if (!message) {
+        alert("Please enter a message.");
         return;
     }
 

@@ -114,3 +114,12 @@ button:hover {
     background-color: #5b6eae;
 }
 
+#channel-selector {
+    padding: 10px;
+    border: none;
+    border-radius: 5px;
+    background: #40444B;
+    color: white;
+    margin: 5px;
+    cursor: pointer;
+}

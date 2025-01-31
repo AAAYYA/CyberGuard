@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Discord Log Viewer</title>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <div id="login-container">
         <input type="password" id="password" placeholder="Enter Password">
@@ -15,13 +17,22 @@
         <div id="chat-header">Server Conversations</div>
         <div id="messages"></div>
         <div id="message-input-container">
-            <input type="text" id="channel-id" placeholder="Enter Channel ID">
+            <select id="channel-selector">
+                <option value="">Select a Channel</option>
+                <option value="1294639801815007305">Staff Only</option>
+                <option value="1294632351103582258">Afterlife</option>
+                <option value="1307395383428780073">Spam Zone</option>
+                <option value="1294642281415970907">Kabuki Corner</option>
+                <option value="1307328647610499102">Arcade Nexus</option>
+                <option value="1307115358767022120">Arasaka Tower</option>
+            </select>
             <input type="text" id="message-input" placeholder="Type a message...">
             <button onclick="sendMessage()">Send</button>
         </div>
-    
+
     </div>
     <script src="/socket.io/socket.io.js"></script>
     <script src="script.js"></script>
 </body>
+
 </html>
