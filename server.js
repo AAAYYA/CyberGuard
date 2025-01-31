@@ -4,6 +4,7 @@ const http = require('http');
 const socketIo = require('socket.io');
 const cors = require('cors');
 const path = require('path');
+const { client } = require('./bot'); 
 
 const app = express();
 const server = http.createServer(app);
@@ -42,23 +43,15 @@ io.on('connection', (socket) => {
     });
 });
 
-// Start server
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
 
-// Export to be used by the bot
 module.exports = { io, messages };
 
-// Integrate with bot
-const { Client, GatewayIntentBits } = require('discord.js');
-const client = new Client({
-    intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent,
-    ],
+client.on('ready', () => {
+    console.log(`Bot connected as ${client.user.tag}`);
 });
 
 client.on('messageCreate', (message) => {
@@ -81,3 +74,5 @@ client.on('messageCreate', (message) => {
 });
 
 client.login(process.env.BOT_TOKEN);
+
+module.exports = { io, messages, client };

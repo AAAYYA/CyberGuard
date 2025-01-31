@@ -319,3 +319,5 @@ client.on('messageDelete', (message) => {
 
     setTimeout(() => deletedMessages.delete(message.channel.id), 300000);
 });
+
+module.exports = { client };
