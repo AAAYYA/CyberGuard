@@ -14,6 +14,12 @@
     <div id="chat-container" class="hidden">
         <div id="chat-header">Server Conversations</div>
         <div id="messages"></div>
+        <div id="message-input-container">
+            <input type="text" id="channel-id" placeholder="Enter Channel ID">
+            <input type="text" id="message-input" placeholder="Type a message...">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    
     </div>
     <script src="/socket.io/socket.io.js"></script>
     <script src="script.js"></script>

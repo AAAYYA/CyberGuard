@@ -36,3 +36,31 @@ function displayMessage(message) {
     messagesContainer.appendChild(messageElement);
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
+
+function sendMessage() {
+    const channelId = document.getElementById('channel-id').value;
+    const message = document.getElementById('message-input').value;
+
+    if (!channelId || !message) {
+        alert("Please enter a channel ID and a message.");
+        return;
+    }
+
+    fetch('/send-message', {
+        method: 'POST',
+        headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer David*Lucy!'
+        },
+        body: JSON.stringify({ channelId, message })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('message-input').value = "";
+        } else {
+            alert("Failed to send message: " + data.error);
+        }
+    })
+    .catch(error => console.error("Error sending message:", error));
+}

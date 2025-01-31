@@ -33,6 +33,27 @@ app.get('/messages', (req, res) => {
     res.json(messages);
 });
 
+app.post('/send-message', async (req, res) => {
+    const { channelId, message } = req.body;
+
+    if (!channelId || !message) {
+        return res.status(400).json({ success: false, error: "Channel ID and message are required" });
+    }
+
+    try {
+        const channel = client.channels.cache.get(channelId);
+        if (!channel) {
+            return res.status(404).json({ success: false, error: "Invalid channel ID" });
+        }
+
+        await channel.send(message);
+        res.json({ success: true });
+    } catch (error) {
+        console.error("Error sending message:", error);
+        res.status(500).json({ success: false, error: "Failed to send message" });
+    }
+});
+
 // WebSocket for real-time updates
 io.on('connection', (socket) => {
     console.log('New client connected');
@@ -66,6 +87,8 @@ client.on('messageCreate', (message) => {
         const msgData = {
             username: message.author.username,
             content: message.content,
+            channelId: message.channel.id,
+            channelName: message.channel.name,        
             timestamp: new Date().toISOString()
         };
         messages.push(msgData);
@@ -74,5 +97,41 @@ client.on('messageCreate', (message) => {
 });
 
 client.login(process.env.BOT_TOKEN);
+
+const readline = require('readline');
+
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+});
+
+rl.on('line', async (input) => {
+    if (!input.startsWith("send ")) {
+        console.log("Usage: send <channelID> <message>");
+        return;
+    }
+
+    const parts = input.split(' ');
+    const channelId = parts[1];
+    const message = parts.slice(2).join(' ');
+
+    if (!channelId || !message) {
+        console.log("Usage: send <channelID> <message>");
+        return;
+    }
+
+    const channel = client.channels.cache.get(channelId);
+    if (!channel) {
+        console.log("❌ Invalid channel ID.");
+        return;
+    }
+
+    try {
+        await channel.send(message);
+        console.log(`✅ Message sent to ${channelId}: ${message}`);
+    } catch (error) {
+        console.error("❌ Failed to send message:", error);
+    }
+});
 
 module.exports = { io, messages, client };
