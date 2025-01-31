@@ -1,5 +1,101 @@
 {
-  "warnings": [],
-  "botPermissions": [],
-  "blacklist": []
+  "warnings": [
+    [
+      "428962075075674142",
+      [
+        {
+          "reason": "manque de respect a moi",
+          "moderator": "damsus",
+          "timestamp": "2024-12-06T21:03:44.661Z"
+        },
+        {
+          "reason": "et aux autres*",
+          "moderator": "damsus",
+          "timestamp": "2024-12-06T21:03:53.731Z"
+        },
+        {
+          "reason": "plus jamais tu ramène tes goûts ici",
+          "moderator": "damsus",
+          "timestamp": "2024-12-06T21:26:29.335Z"
+        },
+        {
+          "reason": "encore une remarque tu kick",
+          "moderator": "damsus",
+          "timestamp": "2024-12-06T21:36:45.015Z"
+        },
+        {
+          "reason": "méchant",
+          "moderator": "v_kushinadaa",
+          "timestamp": "2024-12-07T22:19:32.021Z"
+        },
+        {
+          "reason": "t’es noir",
+          "moderator": "v_kushinadaa",
+          "timestamp": "2024-12-07T22:20:01.465Z"
+        },
+        {
+          "reason": "voilà",
+          "moderator": "v_kushinadaa",
+          "timestamp": "2024-12-07T22:55:49.942Z"
+        },
+        {
+          "reason": "non mdr",
+          "moderator": "damsus",
+          "timestamp": "2024-12-07T22:56:50.509Z"
+        }
+      ]
+    ],
+    [
+      "468575132885975051",
+      [
+        {
+          "reason": "tes fesses elles sentent la poussière",
+          "moderator": "v_kushinadaa",
+          "timestamp": "2024-12-07T22:10:48.254Z"
+        },
+        {
+          "reason": "j’en parle comme je veux",
+          "moderator": "v_kushinadaa",
+          "timestamp": "2024-12-07T22:11:25.232Z"
+        },
+        {
+          "reason": "t’es fou",
+          "moderator": "v_kushinadaa",
+          "timestamp": "2024-12-07T22:48:24.641Z"
+        },
+        {
+          "reason": "mais ça va pas",
+          "moderator": "v_kushinadaa",
+          "timestamp": "2024-12-07T22:49:14.618Z"
+        },
+        {
+          "reason": "abus de perms",
+          "moderator": "v_kushinadaa",
+          "timestamp": "2024-12-07T22:59:47.924Z"
+        },
+        {
+          "reason": "c’est moi qui décide",
+          "moderator": "v_kushinadaa",
+          "timestamp": "2024-12-07T23:00:17.839Z"
+        }
+      ]
+    ]
+  ],
+  "botPermissions": [
+    "622758384646488094",
+    "1323410768120647690",
+    "1052332573424099360",
+    "1306619167452958762"
+  ],
+  "blacklist": [
+    "flop",
+    "flopp",
+    "floppp",
+    "flopppp",
+    "dictionnaire",
+    "griffith",
+    "gojo",
+    "voc",
+    "appel"
+  ]
 }

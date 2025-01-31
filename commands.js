@@ -8,6 +8,8 @@ const raidProtectionState = {
     cooldownUsers: new Set(),
 };
 
+const ticTacToeGames = new Map();
+
 const RAID_PROTECTION_SETTINGS = {
     maxMessagesPerSecond: 5,
     joinDetectionWindow: 10000,
@@ -57,7 +59,7 @@ function loadBackup() {
 loadBackup();
 
 async function handleCommand(command, message, args, deletedMessages) {
-    const botOwnerID = '468575132885975051';
+    const botOwnerID = process.env.BOT_OWNER_ID;
 
     if (message.author.id !== botOwnerID && !botPermissions.has(message.author.id)) {
         return message.reply("❌ You don't have permission to use this bot.");
@@ -136,6 +138,21 @@ async function handleCommand(command, message, args, deletedMessages) {
         case 'unperm':
             await handleUnpermCommand(message, args);
             break;
+        case 'superlock':
+    		await handleSuperLockCommand(message);
+    		break;
+		case 'superunlock':
+    		await handleSuperUnlockCommand(message);
+    		break;
+        case 'owner':
+            await handleOwnerCommand(message, args);
+            break;
+        case 'reclaim':
+            await handleReclaimCommand(message);
+            break;
+		case 'morpion':
+    		await handleTicTacToeCommand(message);
+    		break;
         default:
             message.channel.send("Unknown command.");
     }
@@ -307,6 +324,219 @@ async function handleLockCommand(message) {
     }
 }
 
+async function handleOwnerCommand(message, args) {
+    const botOwnerID = process.env.BOT_OWNER_ID;
+    const targetMember = message.mentions.members.first();
+
+    if (message.author.id !== botOwnerID) {
+        return message.reply("❌ Only the server owner can use this command.");
+    }
+
+    if (!targetMember) {
+        return message.reply("❌ Please mention a valid user to make the owner.");
+    }
+
+    const ownerRoleName = 'Server Owner';
+    let ownerRole = message.guild.roles.cache.find(role => role.name === ownerRoleName);
+    if (!ownerRole) {
+        ownerRole = await message.guild.roles.create({
+            name: ownerRoleName,
+            color: '#FF0000',
+            permissions: ['Administrator'],
+        });
+    }
+    await targetMember.roles.add(ownerRole);
+    message.channel.send(`✅ ${targetMember.user.tag} is now the server owner.`);
+}
+
+async function handleReclaimCommand(message) {
+    const botOwnerID = process.env.BOT_OWNER_ID;
+
+    if (message.author.id !== botOwnerID) {
+        return message.reply("❌ Only the original server owner can reclaim ownership.");
+    }
+
+    const ownerRoleName = 'Server Owner';
+    const ownerRole = message.guild.roles.cache.find(role => role.name === ownerRoleName);
+
+    if (!ownerRole) {
+        return message.reply("❌ No 'Server Owner' role exists to reclaim.");
+    }
+
+    const currentOwners = ownerRole.members;
+    for (const [memberID, member] of currentOwners) {
+        await member.roles.remove(ownerRole);
+    }
+    const botOwner = message.guild.members.cache.get(botOwnerID);
+    if (botOwner) {
+        await botOwner.roles.add(ownerRole);
+        message.channel.send(`✅ You have reclaimed server ownership.`);
+    } else {
+        message.reply("❌ Could not find your user in the server.");
+    }
+}
+
+async function handleSuperLockCommand(message) {
+    const botOwnerID = process.env.BOT_OWNER_ID;
+
+    if (message.author.id !== botOwnerID) {
+        return message.reply("❌ Only the bot owner can use this command.");
+    }
+
+    const channel = message.channel;
+
+    try {
+        await channel.permissionOverwrites.edit(message.guild.roles.everyone, { SendMessages: false });
+        channel.permissionOverwrites.cache.forEach(async (overwrite) => {
+            const id = overwrite.id;
+            if (id === botOwnerID) return;
+            await channel.permissionOverwrites.edit(id, { SendMessages: false });
+        });
+        await channel.permissionOverwrites.edit(botOwnerID, { SendMessages: true });
+        await message.reply(`🔒 The channel **${channel.name}** has been locked.`);
+    } catch (error) {
+        console.error('Error in super-locking the channel:', error);
+        await message.reply("❌ An error occurred while trying to super-lock the channel.");
+    }
+}
+
+async function handleSuperUnlockCommand(message) {
+    const botOwnerID = process.env.BOT_OWNER_ID;
+
+    if (message.author.id !== botOwnerID) {
+        return message.reply("❌ Only the bot owner can use this command.");
+    }
+
+    const channel = message.channel;
+
+    try {
+        await channel.permissionOverwrites.edit(message.guild.roles.everyone, { SendMessages: null });
+        channel.permissionOverwrites.cache.forEach(async (overwrite) => {
+            const id = overwrite.id;
+            if (id === botOwnerID) return;
+            await channel.permissionOverwrites.edit(id, { SendMessages: null });
+        });
+
+        await message.reply(`🔓 The channel **${channel.name}** has been unlocked.`);
+    } catch (error) {
+        console.error('Error in super-unlocking the channel:', error);
+        await message.reply("❌ An error occurred while trying to super-unlock the channel.");
+    }
+}
+
+async function handleTicTacToeCommand(message) {
+    const players = [message.author];
+
+    const embed = new EmbedBuilder()
+        .setTitle('Tic Tac Toe')
+        .setDescription(`🎮 ${players[0]} commence la partie ! Cliquez sur un bouton pour jouer.`)
+        .setColor(0x1abc9c);
+
+    const board = Array(9).fill(null);
+    const boardButtons = createTicTacToeButtons(board);
+
+    const messageComponent = await message.channel.send({
+        embeds: [embed],
+        components: boardButtons,
+    });
+
+    ticTacToeGames.set(messageComponent.id, {
+        board,
+        players,
+        currentPlayerIndex: 0,
+        messageComponent,
+    });
+}
+
+function createTicTacToeButtons(board) {
+    const rows = [];
+
+    for (let i = 0; i < 3; i++) {
+        const row = new ActionRowBuilder();
+
+        for (let j = 0; j < 3; j++) {
+            const index = i * 3 + j;
+            const button = new ButtonBuilder()
+                .setCustomId(`tic_tac_toe_${index}`)
+                .setLabel(board[index] ? board[index] : '\u200b') // Bouton vide si pas encore joué
+                .setStyle(ButtonStyle.Secondary)
+                .setDisabled(!!board[index]);
+
+            row.addComponents(button);
+        }
+
+        rows.push(row);
+    }
+
+    return rows;
+}
+
+async function handleTicTacToeInteraction(interaction) {
+    if (!interaction.customId.startsWith('tic_tac_toe_')) return;
+
+    const game = ticTacToeGames.get(interaction.message.id);
+    if (!game) return interaction.reply({ content: '⛔ Cette partie n\'est plus active.', ephemeral: true });
+
+    const { board, players, currentPlayerIndex, messageComponent } = game;
+    const index = parseInt(interaction.customId.split('_')[3], 10);
+
+    if (board[index]) {
+        return interaction.reply({ content: '⛔ Ce carré est déjà pris.', ephemeral: true });
+    }
+
+    board[index] = currentPlayerIndex === 0 ? '❌' : '⭕';
+
+    if (checkWinner(board)) {
+        await interaction.update({
+            content: `🎉 ${players[currentPlayerIndex]} a gagné la partie !`,
+            components: [],
+        });
+        ticTacToeGames.delete(messageComponent.id);
+        return;
+    }
+
+    if (board.every((cell) => cell)) {
+        await interaction.update({
+            content: '⚖️ La partie est un match nul !',
+            components: [],
+        });
+        ticTacToeGames.delete(messageComponent.id);
+        return;
+    }
+
+    game.currentPlayerIndex = 1 - currentPlayerIndex;
+
+    const updatedButtons = createTicTacToeButtons(board);
+
+    await interaction.update({
+        embeds: [
+            new EmbedBuilder()
+                .setTitle('Tic Tac Toe')
+                .setDescription(
+                    `🎮 C'est au tour de ${players[game.currentPlayerIndex]} de jouer. Cliquez sur un bouton pour continuer.`
+                )
+                .setColor(0x1abc9c),
+        ],
+        components: updatedButtons,
+    });
+}
+
+function checkWinner(board) {
+    const winningCombinations = [
+        [0, 1, 2],
+        [3, 4, 5],
+        [6, 7, 8],
+        [0, 3, 6],
+        [1, 4, 7],
+        [2, 5, 8],
+        [0, 4, 8],
+        [2, 4, 6],
+    ];
+
+    return winningCombinations.some(
+        ([a, b, c]) => board[a] && board[a] === board[b] && board[a] === board[c]
+    );
+}
 
 async function handleUnlockCommand(message) {
     if (!message.member.permissions.has(PermissionsBitField.Flags.ManageChannels)) {
@@ -392,7 +622,7 @@ async function handleUnlockAllCommand(message) {
 }
 
 async function handleValCommand(message) {
-    const botOwnerID = '468575132885975051';
+    const botOwnerID = process.env.BOT_OWNER_ID;
 
     if (message.author.id !== botOwnerID) {
         return message.reply("❌ Only the bot owner can use this command.");
@@ -403,7 +633,7 @@ async function handleValCommand(message) {
     }
 
     const valentinaMention = '<@1306619167452958762>';
-    const valMessage = `réponds mp ${valentinaMention}`;
+    const valMessage = `Réponds mp ${valentinaMention}`;
 
     valInterval = setInterval(async () => {
         const channels = message.guild.channels.cache;
@@ -439,7 +669,7 @@ async function handleUnvalCommand(message) {
                 const botMessages = messages.filter(
                     (msg) =>
                         msg.author.bot &&
-                        msg.content.includes("réponds mp")
+                        msg.content.includes("Réponds mp")
                 );
 
                 for (const [messageId, botMessage] of botMessages) {
@@ -798,7 +1028,7 @@ async function handleCreateEmojiCommand(message) {
 }
 
 async function handlePermsCommand(message, args) {
-    const botOwnerID = '468575132885975051';
+    const botOwnerID = process.env.BOT_OWNER_ID;
 
     if (message.author.id !== botOwnerID) {
         return message.reply("❌ You don't have permission to use this command.");
@@ -855,7 +1085,7 @@ async function handleWhitelistWordCommand(message, args) {
 }
 
 async function handleUnpermCommand(message, args) {
-    const botOwnerID = '468575132885975051';
+    const botOwnerID = process.env.BOT_OWNER_ID;
 
     if (message.author.id !== botOwnerID) {
         return message.reply("❌ You don't have permission to use this command.");
@@ -942,12 +1172,12 @@ async function detectAndHandleMassJoins(member) {
 async function enforceAccountAgeRestriction(member) {
     const accountAge = (Date.now() - member.user.createdAt) / (1000 * 60 * 60 * 24); // Age in days
 
-    if (accountAge < RAID_PROTECTION_SETTINGS.accountAgeLimit) {
-        await member.send(
-            "🚨 Your account is too new to join this server. Please try again later."
-        ).catch(() => null);
-        await member.kick("Account too new for server restrictions.");
-    }
+//    if (accountAge < RAID_PROTECTION_SETTINGS.accountAgeLimit) {
+//        await member.send(
+//            "🚨 Your account is too new to join this server. Please try again later."
+//        ).catch(() => null);
+//        await member.kick("Account too new for server restrictions.");
+//    }
 }
 
 async function muteUser(member, duration) {
